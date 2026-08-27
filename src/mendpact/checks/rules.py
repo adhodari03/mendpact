@@ -1,4 +1,4 @@
-"""Transparent, deterministic rules for the first OpenProof release."""
+"""Transparent, deterministic rules for the first MendPact release."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import re
 from collections.abc import Iterable
 from urllib.parse import urlsplit
 
-from openproof.domain import CapabilityGraph, CapabilityNode, Finding, NodeKind, Severity
+from mendpact.domain import CapabilityGraph, CapabilityNode, Finding, NodeKind, Severity
 
 _INJECTION_PATTERNS: dict[str, re.Pattern[str]] = {
     "ignore-instructions": re.compile(r"\bignore\b.{0,40}\b(previous|prior|system)\b", re.I),
@@ -47,7 +47,7 @@ def _check_tool(tool: CapabilityNode) -> Iterable[Finding]:
     description = (tool.description or "").strip()
     if not description:
         yield _finding(
-            "OP-MCP-001",
+            "MP-MCP-001",
             Severity.MEDIUM,
             "Tool has no description",
             "Models cannot reliably choose or constrain a tool whose purpose is undocumented.",
@@ -55,7 +55,7 @@ def _check_tool(tool: CapabilityNode) -> Iterable[Finding]:
         )
     elif len(description) < 20:
         yield _finding(
-            "OP-MCP-002",
+            "MP-MCP-002",
             Severity.LOW,
             "Tool description is very short",
             "A short description may omit preconditions, side effects, or permission boundaries.",
@@ -68,7 +68,7 @@ def _check_tool(tool: CapabilityNode) -> Iterable[Finding]:
     additional = schema.get("additionalProperties") if isinstance(schema, dict) else None
     if schema.get("type") == "object" and not properties and additional is not False:
         yield _finding(
-            "OP-MCP-003",
+            "MP-MCP-003",
             Severity.MEDIUM,
             "Tool accepts unbounded object arguments",
             "The input schema does not declare properties or reject additional properties.",
@@ -81,7 +81,7 @@ def _check_tool(tool: CapabilityNode) -> Iterable[Finding]:
         matches = sorted({term for term in terms if term in searchable})
         if matches:
             yield _finding(
-                "OP-MCP-004",
+                "MP-MCP-004",
                 severity,
                 "Tool may perform a consequential action",
                 "The tool name or description suggests side effects that require "
@@ -95,7 +95,7 @@ def _check_tool(tool: CapabilityNode) -> Iterable[Finding]:
         match = pattern.search(description)
         if match:
             yield _finding(
-                "OP-MCP-005",
+                "MP-MCP-005",
                 Severity.CRITICAL,
                 "Tool description contains injection-like instructions",
                 "Tool metadata includes language that may manipulate a model beyond "
@@ -113,7 +113,7 @@ def run_deterministic_checks(graph: CapabilityGraph) -> list[Finding]:
     if urlsplit(graph.target).scheme == "http":
         findings.append(
             _finding(
-                "OP-NET-001",
+                "MP-NET-001",
                 Severity.MEDIUM,
                 "Target uses plaintext HTTP",
                 "Production MCP traffic should use TLS to protect tool metadata and "
@@ -125,7 +125,7 @@ def run_deterministic_checks(graph: CapabilityGraph) -> list[Finding]:
     if len(tools) > 50:
         findings.append(
             _finding(
-                "OP-MCP-006",
+                "MP-MCP-006",
                 Severity.LOW,
                 "Large tool catalog",
                 "Large catalogs increase selection ambiguity and should be tested with "

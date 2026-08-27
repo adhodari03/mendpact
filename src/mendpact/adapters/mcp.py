@@ -7,7 +7,7 @@ from typing import Any
 
 from mcp import Client
 
-from openproof.domain import (
+from mendpact.domain import (
     CapabilityEdge,
     CapabilityGraph,
     CapabilityNode,

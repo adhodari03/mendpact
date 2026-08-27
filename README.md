@@ -1,27 +1,27 @@
-# OpenProof
+# MendPact
 
-OpenProof is a protocol-native reliability scanner for AI agents. The first release connects to
+MendPact is a protocol-native reliability scanner for AI agents. The first release connects to
 a remote Model Context Protocol (MCP) endpoint, inventories its capabilities, builds a graph of
 the exposed surface, runs deterministic safety checks, and emits a CI-friendly report.
 
-> **Status:** early development. OpenProof reports observable risks and compatibility signals;
+> **Status:** early development. MendPact reports observable risks and compatibility signals;
 > it does not certify that an agent is safe.
 
 ## Why start here?
 
 Remote MCP discovery gives maintainers value without asking them to install an SDK in their
-application or give OpenProof source-code access. The deterministic core also provides a stable
+application or give MendPact source-code access. The deterministic core also provides a stable
 baseline before probabilistic, model-driven evaluations are added.
 
 ## Quick start
 
-OpenProof requires Python 3.12 or newer.
+MendPact requires Python 3.12 or newer.
 
 ```bash
 python3.13 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev]'
-openproof scan https://example.com/mcp --output report.json
+mendpact scan https://example.com/mcp --output report.json
 ```
 
 Local endpoints are blocked by default. To scan a development server deliberately:
@@ -29,7 +29,7 @@ Local endpoints are blocked by default. To scan a development server deliberatel
 ```bash
 python -m uvicorn examples.fixture_server:app --host 127.0.0.1 --port 8000
 
-openproof scan http://127.0.0.1:8000/mcp \
+mendpact scan http://127.0.0.1:8000/mcp \
   --allow-private \
   --allow-insecure-http \
   --output report.json
@@ -40,24 +40,24 @@ and demonstrates the CI failure path.
 
 ## MCP conformance
 
-OpenProof also wraps the official MCP server conformance framework, pinned to version `0.1.16`.
+MendPact also wraps the official MCP server conformance framework, pinned to version `0.1.16`.
 This command requires Node.js 22 or newer because the upstream runner is distributed through npm.
 The pinned release supports the `active`, `all`, and `pending` server suites.
 
 The default runs only the initialization scenario:
 
 ```bash
-openproof conformance http://127.0.0.1:8000/mcp \
+mendpact conformance http://127.0.0.1:8000/mcp \
   --allow-private \
   --allow-insecure-http \
   --output conformance-report.json
 ```
 
-Broader scenarios may invoke MCP tools and must only target an isolated test server. OpenProof
+Broader scenarios may invoke MCP tools and must only target an isolated test server. MendPact
 requires an explicit acknowledgement:
 
 ```bash
-openproof conformance http://127.0.0.1:8000/mcp \
+mendpact conformance http://127.0.0.1:8000/mcp \
   --suite active \
   --allow-tool-calls \
   --allow-private \
@@ -65,8 +65,8 @@ openproof conformance http://127.0.0.1:8000/mcp \
 ```
 
 The wrapper uses the upstream exit code, retains the runner output, and normalizes every
-`checks.json` artifact into a versioned OpenProof conformance report. The upstream framework is
-still marked unstable, which is why OpenProof pins rather than silently following its latest
+`checks.json` artifact into a versioned MendPact conformance report. The upstream framework is
+still marked unstable, which is why MendPact pins rather than silently following its latest
 release.
 
 Exit codes are designed for CI:
@@ -104,4 +104,4 @@ See [the architecture](docs/ARCHITECTURE.md), [security boundary](docs/SECURITY.
 
 ## License
 
-OpenProof is licensed under the [Apache License 2.0](LICENSE).
+MendPact is licensed under the [Apache License 2.0](LICENSE).

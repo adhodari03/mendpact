@@ -1,6 +1,6 @@
 from typer.testing import CliRunner
 
-from openproof.cli import app
+from mendpact.cli import app
 
 runner = CliRunner()
 

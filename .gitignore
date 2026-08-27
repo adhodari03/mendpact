@@ -91,9 +91,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# OpenProof-generated reports and conformance artifacts
+# MendPact-generated reports and conformance artifacts
 /report.json
-/openproof-report*.json
+/mendpact-report*.json
 /conformance-report*.json
 /reports/
 /results/

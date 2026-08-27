@@ -27,24 +27,24 @@ jobs:
       - name: Type check
         run: python -m mypy src
       - name: Test
-        run: python -m pytest --cov=openproof --cov-report=term-missing
+        run: python -m pytest --cov=mendpact --cov-report=term-missing
       - name: Start MCP fixture
         run: |
           python -m uvicorn examples.fixture_server:app \
             --host 127.0.0.1 \
             --port 8000 \
-            > /tmp/openproof-fixture.log 2>&1 &
+            > /tmp/mendpact-fixture.log 2>&1 &
           for attempt in {1..30}; do
             if curl --silent --output /dev/null http://127.0.0.1:8000/mcp; then
               exit 0
             fi
             sleep 0.5
           done
-          cat /tmp/openproof-fixture.log
+          cat /tmp/mendpact-fixture.log
           exit 1
       - name: MCP conformance smoke test
         run: >-
-          openproof conformance
+          mendpact conformance
           http://127.0.0.1:8000/mcp
           --allow-private
           --allow-insecure-http
@@ -53,6 +53,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: openproof-conformance-report
+          name: mendpact-conformance-report
           path: conformance-report.json
           if-no-files-found: ignore

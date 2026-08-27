@@ -1,8 +1,8 @@
-"""Deliberately mixed-risk MCP server for local OpenProof development."""
+"""Deliberately mixed-risk MCP server for local MendPact development."""
 
 from mcp.server import MCPServer
 
-mcp = MCPServer("OpenProof Fixture")
+mcp = MCPServer("MendPact Fixture")
 
 
 @mcp.tool()

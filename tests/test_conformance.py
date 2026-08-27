@@ -4,16 +4,16 @@ from subprocess import CompletedProcess
 
 import pytest
 
-import openproof.conformance as conformance
-from openproof.conformance import (
+import mendpact.conformance as conformance
+from mendpact.conformance import (
     ConformanceConfigurationError,
     build_command,
     load_results,
     run_server_conformance,
     validate_selection,
 )
-from openproof.domain import ConformanceCheckStatus, ScanStatus
-from openproof.security.targets import TargetPolicy
+from mendpact.domain import ConformanceCheckStatus, ScanStatus
+from mendpact.security.targets import TargetPolicy
 
 
 def _check_payload(status: str = "SUCCESS") -> list[dict[str, object]]:

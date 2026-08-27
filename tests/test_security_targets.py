@@ -1,6 +1,6 @@
 import pytest
 
-from openproof.security.targets import TargetPolicy, UnsafeTargetError, validate_target_url
+from mendpact.security.targets import TargetPolicy, UnsafeTargetError, validate_target_url
 
 
 @pytest.mark.anyio

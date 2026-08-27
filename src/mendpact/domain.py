@@ -1,4 +1,4 @@
-"""Core, provider-neutral data structures used by OpenProof."""
+"""Core, provider-neutral data structures used by MendPact."""
 
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ class ScanSummary(BaseModel):
 
 
 class ScanReport(BaseModel):
-    schema_version: str = "openproof.scan.v1"
+    schema_version: str = "mendpact.scan.v1"
     scan_id: str = Field(default_factory=lambda: str(uuid4()))
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     target: str
@@ -149,7 +149,7 @@ class ConformanceSummary(BaseModel):
 
 
 class ConformanceReport(BaseModel):
-    schema_version: str = "openproof.conformance.v1"
+    schema_version: str = "mendpact.conformance.v1"
     run_id: str = Field(default_factory=lambda: str(uuid4()))
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     target: str

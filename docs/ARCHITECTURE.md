@@ -1,6 +1,6 @@
 # Architecture
 
-OpenProof separates protocol discovery, deterministic analysis, model drivers, grading, and
+MendPact separates protocol discovery, deterministic analysis, model drivers, grading, and
 reporting. The current vertical slice implements the first, second, and final layers without
 requiring a paid model API.
 
@@ -17,10 +17,10 @@ target validation ---> MCP adapter ---> capability graph
                                 JSON + terminal report
 ```
 
-The separate `openproof conformance` path invokes the pinned official MCP conformance CLI as a
+The separate `mendpact conformance` path invokes the pinned official MCP conformance CLI as a
 child process. It validates the target first, runs the upstream package without a shell, reads
 the emitted `checks.json` files from an ephemeral directory, and normalizes them into the
-provider-neutral OpenProof report schema. The npm package remains an external executable rather
+provider-neutral MendPact report schema. The npm package remains an external executable rather
 than a Python dependency so its version and supply-chain boundary stay explicit.
 
 ## Boundaries
@@ -35,7 +35,7 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 
 The next provider layer will implement a small `ModelDriver` protocol. OpenAI's implementation
 will use Responses API tool calling, while Anthropic and Google implementations will emit the
-same OpenProof trace model. The evaluation engine will therefore remain comparable across model
+same MendPact trace model. The evaluation engine will therefore remain comparable across model
 providers.
 
 ## Why PostgreSQL later, not a graph database now?

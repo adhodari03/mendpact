@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "openproof"
+name = "mendpact"
 version = "0.1.0"
 description = "Protocol-native reliability scanner for AI agents"
 readme = "README.md"
@@ -26,10 +26,10 @@ dev = [
 ]
 
 [project.scripts]
-openproof = "openproof.cli:app"
+mendpact = "mendpact.cli:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/openproof"]
+packages = ["src/mendpact"]
 
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers"
@@ -45,4 +45,4 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-packages = ["openproof"]
+packages = ["mendpact"]

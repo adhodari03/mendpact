@@ -1,8 +1,8 @@
 import pytest
 from mcp.server import MCPServer
 
-from openproof.domain import NodeKind, ScanStatus, Severity
-from openproof.scanner import scan_mcp_target
+from mendpact.domain import NodeKind, ScanStatus, Severity
+from mendpact.scanner import scan_mcp_target
 
 
 @pytest.mark.anyio
@@ -36,4 +36,4 @@ async def test_high_risk_tool_fails_default_policy() -> None:
     report = await scan_mcp_target(server, failure_threshold=Severity.HIGH)
 
     assert report.status == ScanStatus.FAILED
-    assert any(finding.rule_id == "OP-MCP-004" for finding in report.findings)
+    assert any(finding.rule_id == "MP-MCP-004" for finding in report.findings)

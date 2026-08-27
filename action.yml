@@ -1,6 +1,6 @@
-name: OpenProof MCP Scan
+name: MendPact MCP Scan
 description: Scan a remote MCP endpoint for deterministic reliability and safety findings.
-author: OpenProof
+author: MendPact
 branding:
   icon: shield
   color: blue
@@ -15,17 +15,17 @@ inputs:
   output:
     description: JSON report path
     required: false
-    default: openproof-report.json
+    default: mendpact-report.json
 runs:
   using: composite
   steps:
-    - name: Install OpenProof
+    - name: Install MendPact
       shell: bash
       run: python -m pip install "${{ github.action_path }}"
     - name: Scan MCP endpoint
       shell: bash
       run: >-
-        openproof scan
+        mendpact scan
         "${{ inputs.target }}"
         --fail-on "${{ inputs.fail-on }}"
         --output "${{ inputs.output }}"

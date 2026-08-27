@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from openproof.adapters.mcp import discover_mcp_target
-from openproof.checks.rules import run_deterministic_checks
-from openproof.domain import ScanReport, ScanStatus, Severity, summarize
-from openproof.security.targets import TargetPolicy, validate_target_url
+from mendpact.adapters.mcp import discover_mcp_target
+from mendpact.checks.rules import run_deterministic_checks
+from mendpact.domain import ScanReport, ScanStatus, Severity, summarize
+from mendpact.security.targets import TargetPolicy, validate_target_url
 
 
 async def scan_mcp_url(

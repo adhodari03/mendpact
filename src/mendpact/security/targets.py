@@ -11,7 +11,7 @@ import anyio
 
 
 class UnsafeTargetError(ValueError):
-    """Raised when a target violates OpenProof's network policy."""
+    """Raised when a target violates MendPact's network policy."""
 
 
 @dataclass(frozen=True)

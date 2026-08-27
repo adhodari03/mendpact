@@ -1,4 +1,4 @@
-"""Command-line interface for OpenProof."""
+"""Command-line interface for MendPact."""
 
 from __future__ import annotations
 
@@ -10,20 +10,20 @@ import anyio
 import typer
 from rich.console import Console
 
-from openproof import __version__
-from openproof.conformance import run_server_conformance
-from openproof.domain import ScanStatus, Severity
-from openproof.reporting import (
+from mendpact import __version__
+from mendpact.conformance import run_server_conformance
+from mendpact.domain import ScanStatus, Severity
+from mendpact.reporting import (
     render_conformance_report,
     render_report,
     write_conformance_report,
     write_json_report,
 )
-from openproof.scanner import scan_mcp_url
-from openproof.security.targets import TargetPolicy
+from mendpact.scanner import scan_mcp_url
+from mendpact.security.targets import TargetPolicy
 
 app = typer.Typer(
-    name="openproof",
+    name="mendpact",
     help="Protocol-native reliability checks for AI agents.",
     no_args_is_help=True,
 )
@@ -43,7 +43,7 @@ def main(
         typer.Option("--version", callback=_version_callback, is_eager=True),
     ] = None,
 ) -> None:
-    """Run OpenProof reliability scans."""
+    """Run MendPact reliability scans."""
 
 
 @app.command()

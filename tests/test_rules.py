@@ -1,5 +1,5 @@
-from openproof.checks.rules import run_deterministic_checks
-from openproof.domain import CapabilityGraph, CapabilityNode, NodeKind, Severity
+from mendpact.checks.rules import run_deterministic_checks
+from mendpact.domain import CapabilityGraph, CapabilityNode, NodeKind, Severity
 
 
 def test_flags_consequential_tool_and_missing_description() -> None:
@@ -17,7 +17,7 @@ def test_flags_consequential_tool_and_missing_description() -> None:
 
     findings = run_deterministic_checks(graph)
 
-    assert {finding.rule_id for finding in findings} == {"OP-MCP-001", "OP-MCP-004"}
+    assert {finding.rule_id for finding in findings} == {"MP-MCP-001", "MP-MCP-004"}
     assert max(finding.severity.rank for finding in findings) >= Severity.HIGH.rank
 
 
@@ -39,7 +39,7 @@ def test_flags_injection_like_description() -> None:
 
     findings = run_deterministic_checks(graph)
 
-    injection_findings = [finding for finding in findings if finding.rule_id == "OP-MCP-005"]
+    injection_findings = [finding for finding in findings if finding.rule_id == "MP-MCP-005"]
     assert injection_findings
     assert all(finding.severity == Severity.CRITICAL for finding in injection_findings)
 

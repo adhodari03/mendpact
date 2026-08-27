@@ -12,14 +12,14 @@ from tempfile import TemporaryDirectory
 import anyio
 from pydantic import ValidationError
 
-from openproof.domain import (
+from mendpact.domain import (
     ConformanceCheck,
     ConformanceReport,
     ConformanceScenario,
     ScanStatus,
     summarize_conformance,
 )
-from openproof.security.targets import TargetPolicy, validate_target_url
+from mendpact.security.targets import TargetPolicy, validate_target_url
 
 RUNNER_PACKAGE = "@modelcontextprotocol/conformance"
 RUNNER_VERSION = "0.1.16"
@@ -203,7 +203,7 @@ async def run_server_conformance(
         )
 
     try:
-        with TemporaryDirectory(prefix="openproof-conformance-") as temporary_directory:
+        with TemporaryDirectory(prefix="mendpact-conformance-") as temporary_directory:
             root = Path(temporary_directory)
             environment = os.environ.copy()
             environment["npm_config_cache"] = str(root / ".npm-cache")

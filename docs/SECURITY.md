@@ -1,6 +1,6 @@
 # Security boundary
 
-OpenProof inspects systems that may be untrusted. Safety therefore depends on keeping discovery,
+MendPact inspects systems that may be untrusted. Safety therefore depends on keeping discovery,
 execution, credentials, and stored evidence within explicit boundaries.
 
 ## Implemented in v0.1
@@ -17,7 +17,7 @@ execution, credentials, and stored evidence within explicit boundaries.
 ## Conformance execution
 
 The official conformance suite can invoke MCP tools. A full suite must never be aimed at a
-production server unless every possible side effect is understood and accepted. OpenProof
+production server unless every possible side effect is understood and accepted. MendPact
 defaults to `server-initialize`; any other scenario or suite requires `--allow-tool-calls` and
 should run against an isolated fixture with disposable data and credentials.
 
@@ -29,7 +29,7 @@ will require a prebuilt, verified runner image without runtime installs.
 ## Known limitation
 
 Pre-connection DNS resolution alone does not fully prevent DNS rebinding because the MCP SDK
-performs its own network connection. Before operating OpenProof as a public scanning service,
+performs its own network connection. Before operating MendPact as a public scanning service,
 route all target traffic through an egress proxy that revalidates the connected address and
 blocks private ranges.
 

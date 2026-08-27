@@ -7,7 +7,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from openproof.domain import (
+from mendpact.domain import (
     ConformanceCheckStatus,
     ConformanceReport,
     ScanReport,
@@ -29,7 +29,7 @@ def render_report(report: ScanReport, console: Console) -> None:
         ScanStatus.FAILED: "bold red",
         ScanStatus.ERROR: "bold red",
     }[report.status]
-    console.print(f"OpenProof scan: [{status_style}]{report.status.value.upper()}[/]")
+    console.print(f"MendPact scan: [{status_style}]{report.status.value.upper()}[/]")
     console.print(f"Target: {report.target}")
 
     if report.errors:
@@ -70,7 +70,7 @@ def render_conformance_report(report: ConformanceReport, console: Console) -> No
         ScanStatus.FAILED: "bold red",
         ScanStatus.ERROR: "bold red",
     }[report.status]
-    console.print(f"OpenProof conformance: [{status_style}]{report.status.value.upper()}[/]")
+    console.print(f"MendPact conformance: [{status_style}]{report.status.value.upper()}[/]")
     console.print(f"Target: {report.target}")
     console.print(f"Runner: {report.runner_package}@{report.runner_version}")
 
