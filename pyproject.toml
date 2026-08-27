@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openproof"
+version = "0.1.0"
+description = "Protocol-native reliability scanner for AI agents"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = [
+  "anyio>=4.9,<5.0",
+  "mcp[cli]>=2.0,<3.0",
+  "pydantic>=2.11,<3.0",
+  "rich>=14.0,<15.0",
+  "typer>=0.16,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.17,<2.0",
+  "pytest>=9.0,<10.0",
+  "pytest-cov>=6.2,<8.0",
+  "ruff>=0.12,<1.0",
+]
+
+[project.scripts]
+openproof = "openproof.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openproof"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["openproof"]

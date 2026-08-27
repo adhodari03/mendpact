@@ -1,0 +1,110 @@
+# Operating-system metadata
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# Editors and IDEs
+.idea/
+.vscode/
+.fleet/
+.zed/
+.history/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Secrets and machine-local configuration
+.env
+.env.*
+!.env.example
+.envrc
+.direnv/
+.npmrc
+.pypirc
+.netrc
+pip.conf
+.secrets/
+secrets.local/
+credentials*.json
+service-account*.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Local AI-assistant state (repository-level instruction files remain trackable)
+.codex/
+.agents/
+.claude/settings.local.json
+
+# Python environments and bytecode
+.venv/
+.venv-*/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python packaging and build output
+build/
+dist/
+site/
+wheels/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Test, coverage, type-checker, and linter output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+.dmypy.json
+dmypy.json
+.hypothesis/
+.tox/
+.nox/
+junit.xml
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Node/npm artifacts used by external tooling
+node_modules/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OpenProof-generated reports and conformance artifacts
+/report.json
+/openproof-report*.json
+/conformance-report*.json
+/reports/
+/results/
+
+# Local databases, logs, caches, and temporary files
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.pid
+*.pid.lock
+.cache/
+tmp/
+temp/
