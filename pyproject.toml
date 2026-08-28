@@ -19,6 +19,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+openai = [
+  "openai>=2.0,<3.0",
+]
 dev = [
   "mypy>=1.17,<2.0",
   "pytest>=9.0,<10.0",

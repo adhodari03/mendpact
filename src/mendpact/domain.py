@@ -235,8 +235,16 @@ class ToolCallTrace(BaseModel):
     model: str
     available_tools: list[str] = Field(default_factory=list)
     selected_tool: str | None = None
+    provider_selected_tool: str | None = None
+    tool_call_count: int = Field(default=1, ge=0)
     arguments: dict[str, Any] = Field(default_factory=dict)
+    arguments_parse_error: str | None = None
     message: str | None = None
+    response_id: str | None = None
+    latency_ms: float | None = Field(default=None, ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
 
 
 class BehaviorGrade(BaseModel):
@@ -244,6 +252,7 @@ class BehaviorGrade(BaseModel):
 
     passed: bool
     tool_selected: bool
+    single_tool_selected: bool
     tool_exists: bool
     expected_tool_selected: bool
     arguments_valid: bool
@@ -270,6 +279,10 @@ class BehaviorSummary(BaseModel):
     passed_trials: int
     failed_trials: int
     pass_rate: float
+    input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    total_tokens: int = Field(default=0, ge=0)
+    total_latency_ms: float = Field(default=0, ge=0)
     confusion_edges: list[ConfusionEdge] = Field(default_factory=list)
 
 

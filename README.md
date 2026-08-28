@@ -38,11 +38,11 @@ mendpact scan http://127.0.0.1:8000/mcp \
 The fixture intentionally exposes a destructive-looking tool, so this scan exits with code `1`
 and demonstrates the CI failure path.
 
-## Behavioral replay evaluation
+## Behavioral evaluation
 
 MendPact can also test whether a model decision chose the intended MCP tool and produced valid
-arguments. The first implementation uses a replay driver, making evaluations deterministic,
-free to run, and safe: it discovers the endpoint but does not call a model or execute a tool.
+arguments. Replay mode is deterministic and free to run, while the optional OpenAI driver asks a
+live model to select a tool through the Responses API. Neither mode executes the selected tool.
 
 With the fixture server running, evaluate the included scenario and recorded decision:
 
@@ -58,8 +58,36 @@ mendpact evaluate http://127.0.0.1:8000/mcp \
 A scenario states a natural-language task, the expected tool and arguments, and any forbidden
 tools. MendPact checks the replayed choice against the discovered tool catalog, validates its
 arguments with the tool's JSON Schema, and reports repeated wrong-tool choices as confusion
-edges. The provider-neutral trace format is the extension point for live OpenAI and other model
-drivers in later releases.
+edges. The provider-neutral trace format supports OpenAI now and additional model drivers later.
+A full report records the selected tool, arguments, resolved model, response ID,
+latency, and token counts without storing the API key or raw provider response.
+
+### Live OpenAI evaluation
+
+Install the optional SDK and set the API key in your environment:
+
+```bash
+python -m pip install -e '.[openai]'
+export OPENAI_API_KEY='your-key'
+```
+
+Then run the same scenario with an explicit model. This makes a paid API request but still does
+not execute any MCP tool:
+
+```bash
+mendpact evaluate http://127.0.0.1:8000/mcp \
+  --scenario examples/scenarios/read-status.json \
+  --driver openai \
+  --model gpt-5.6 \
+  --allow-private \
+  --allow-insecure-http \
+  --output behavior-report.json \
+  --save-replay replay.json
+```
+
+The saved replay file can reproduce the decisions later without another model call. MendPact
+uses function definitions and single-call controls described in the
+[official OpenAI function-calling guide](https://developers.openai.com/api/docs/guides/function-calling).
 
 ## MCP conformance
 

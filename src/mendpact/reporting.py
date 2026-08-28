@@ -11,6 +11,7 @@ from mendpact.domain import (
     BehaviorReport,
     ConformanceCheckStatus,
     ConformanceReport,
+    ReplayPlan,
     ScanReport,
     ScanStatus,
 )
@@ -26,6 +27,10 @@ def write_conformance_report(report: ConformanceReport, destination: Path) -> No
 
 def write_behavior_report(report: BehaviorReport, destination: Path) -> None:
     destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+
+def write_replay_plan(plan: ReplayPlan, destination: Path) -> None:
+    destination.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
 
 
 def render_report(report: ScanReport, console: Console) -> None:
@@ -140,6 +145,13 @@ def render_behavior_report(report: BehaviorReport, console: Console) -> None:
             f"Failed: {report.summary.failed_trials} | "
             f"Pass rate: {report.summary.pass_rate:.1%}"
         )
+        if report.summary.total_tokens or report.summary.total_latency_ms:
+            console.print(
+                f"Provider usage: {report.summary.total_tokens} tokens "
+                f"({report.summary.input_tokens} input, "
+                f"{report.summary.output_tokens} output) | "
+                f"Latency: {report.summary.total_latency_ms:.0f} ms"
+            )
 
     failed_trials = [trial for trial in report.trials if not trial.grade.passed]
     if not failed_trials:

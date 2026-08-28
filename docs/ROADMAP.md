@@ -14,12 +14,13 @@
 ## Milestone 0.2 — behavioral compatibility
 
 - [x] provider-neutral `ModelDriver` and trace models
-- OpenAI Responses API driver
+- [x] OpenAI Responses API driver
 - [x] task-to-tool selection scenarios
 - [x] JSON Schema argument grading
 - repetition, baselines, and statistical regression thresholds
 - [x] deterministic repetition and wrong-tool confusion summaries
 - [x] trace replay without a live model call
+- [x] export live decisions for deterministic replay
 
 ## Milestone 0.3 — cross-provider matrix
 
