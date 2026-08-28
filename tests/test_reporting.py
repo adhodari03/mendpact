@@ -1,8 +1,12 @@
 import json
 from pathlib import Path
 
-from mendpact.domain import ConformanceReport, ScanReport, ScanStatus, Severity
-from mendpact.reporting import write_conformance_report, write_json_report
+from mendpact.domain import BehaviorReport, ConformanceReport, ScanReport, ScanStatus, Severity
+from mendpact.reporting import (
+    write_behavior_report,
+    write_conformance_report,
+    write_json_report,
+)
 
 
 def test_writes_versioned_json_report(tmp_path: Path) -> None:
@@ -34,3 +38,21 @@ def test_writes_versioned_conformance_report(tmp_path: Path) -> None:
     payload = json.loads(destination.read_text(encoding="utf-8"))
     assert payload["schema_version"] == "mendpact.conformance.v1"
     assert payload["runner_version"] == "0.1.16"
+
+
+def test_writes_versioned_behavior_report(tmp_path: Path) -> None:
+    destination = tmp_path / "behavior.json"
+    report = BehaviorReport(
+        target="https://example.com/mcp",
+        status=ScanStatus.PASSED,
+        suite_name="Read behavior",
+        driver="replay",
+        model="fixture-model",
+        repetitions=1,
+    )
+
+    write_behavior_report(report, destination)
+
+    payload = json.loads(destination.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "mendpact.behavior.v1"
+    assert payload["driver"] == "replay"

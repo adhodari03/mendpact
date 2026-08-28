@@ -38,6 +38,29 @@ mendpact scan http://127.0.0.1:8000/mcp \
 The fixture intentionally exposes a destructive-looking tool, so this scan exits with code `1`
 and demonstrates the CI failure path.
 
+## Behavioral replay evaluation
+
+MendPact can also test whether a model decision chose the intended MCP tool and produced valid
+arguments. The first implementation uses a replay driver, making evaluations deterministic,
+free to run, and safe: it discovers the endpoint but does not call a model or execute a tool.
+
+With the fixture server running, evaluate the included scenario and recorded decision:
+
+```bash
+mendpact evaluate http://127.0.0.1:8000/mcp \
+  --scenario examples/scenarios/read-status.json \
+  --replay examples/replays/read-status.json \
+  --allow-private \
+  --allow-insecure-http \
+  --output behavior-report.json
+```
+
+A scenario states a natural-language task, the expected tool and arguments, and any forbidden
+tools. MendPact checks the replayed choice against the discovered tool catalog, validates its
+arguments with the tool's JSON Schema, and reports repeated wrong-tool choices as confusion
+edges. The provider-neutral trace format is the extension point for live OpenAI and other model
+drivers in later releases.
+
 ## MCP conformance
 
 MendPact also wraps the official MCP server conformance framework, pinned to version `0.1.16`.
@@ -71,9 +94,9 @@ release.
 
 Exit codes are designed for CI:
 
-- `0`: scan completed and no finding met the failure threshold;
-- `1`: scan completed and at least one finding met the threshold;
-- `2`: target validation, MCP discovery, conformance setup, or report writing failed.
+- `0`: the command completed and all configured checks passed;
+- `1`: the command completed and a scan, conformance check, or behavior trial failed;
+- `2`: validation, discovery, setup, replay data, or report writing failed.
 
 ## Current checks
 

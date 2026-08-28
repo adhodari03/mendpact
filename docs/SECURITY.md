@@ -13,6 +13,7 @@ execution, credentials, and stored evidence within explicit boundaries.
 - Reports identify heuristic findings as findings rather than certifications.
 - The conformance wrapper executes a pinned package with an argument list rather than a shell.
 - Only the initialization scenario runs without explicit tool-call authorization.
+- Behavioral replay discovers tool metadata but neither contacts a model nor invokes an MCP tool.
 
 ## Conformance execution
 

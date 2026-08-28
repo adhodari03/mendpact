@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -52,6 +52,13 @@ class ConformanceCheckStatus(StrEnum):
     WARNING = "WARNING"
     SKIPPED = "SKIPPED"
     INFO = "INFO"
+
+
+class ArgumentMatch(StrEnum):
+    """How expected arguments are compared with a model-produced tool call."""
+
+    SUBSET = "subset"
+    EXACT = "exact"
 
 
 class CapabilityNode(BaseModel):
@@ -162,6 +169,123 @@ class ConformanceReport(BaseModel):
     summary: ConformanceSummary | None = None
     stdout: str = ""
     stderr: str = ""
+    errors: list[str] = Field(default_factory=list)
+
+
+class BehaviorExpectation(BaseModel):
+    """The observable tool decision required for a scenario to pass."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    tool: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    argument_match: ArgumentMatch = ArgumentMatch.SUBSET
+    forbidden_tools: list[str] = Field(default_factory=list)
+
+
+class BehaviorScenario(BaseModel):
+    """A natural-language task paired with a deterministic expectation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, pattern=r"^[a-z0-9][a-z0-9_-]*$")
+    name: str = Field(min_length=1)
+    task: str = Field(min_length=1)
+    expectation: BehaviorExpectation
+
+
+class BehaviorSuite(BaseModel):
+    """Portable collection of behavioral scenarios loaded by the CLI."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["mendpact.scenario.v1"] = "mendpact.scenario.v1"
+    name: str = Field(min_length=1)
+    scenarios: list[BehaviorScenario] = Field(min_length=1)
+
+
+class ReplayDecision(BaseModel):
+    """One recorded model decision used by the deterministic replay driver."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    scenario_id: str
+    attempt: int = Field(default=1, ge=1)
+    selected_tool: str | None = None
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    message: str | None = None
+
+
+class ReplayPlan(BaseModel):
+    """Versioned replay input that stands in for a live model provider."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["mendpact.replay.v1"] = "mendpact.replay.v1"
+    model: str = Field(min_length=1)
+    decisions: list[ReplayDecision] = Field(min_length=1)
+
+
+class ToolCallTrace(BaseModel):
+    """Provider-neutral evidence describing one model tool-selection decision."""
+
+    scenario_id: str
+    attempt: int = Field(ge=1)
+    provider: str
+    model: str
+    available_tools: list[str] = Field(default_factory=list)
+    selected_tool: str | None = None
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    message: str | None = None
+
+
+class BehaviorGrade(BaseModel):
+    """Deterministic checks applied to one tool-call trace."""
+
+    passed: bool
+    tool_selected: bool
+    tool_exists: bool
+    expected_tool_selected: bool
+    arguments_valid: bool
+    expected_arguments_match: bool
+    forbidden_tool_selected: bool
+    reasons: list[str] = Field(default_factory=list)
+
+
+class BehaviorTrial(BaseModel):
+    scenario: BehaviorScenario
+    trace: ToolCallTrace
+    grade: BehaviorGrade
+
+
+class ConfusionEdge(BaseModel):
+    intended_tool: str
+    selected_tool: str
+    count: int = Field(ge=1)
+
+
+class BehaviorSummary(BaseModel):
+    scenario_count: int
+    trial_count: int
+    passed_trials: int
+    failed_trials: int
+    pass_rate: float
+    confusion_edges: list[ConfusionEdge] = Field(default_factory=list)
+
+
+class BehaviorReport(BaseModel):
+    schema_version: Literal["mendpact.behavior.v1"] = "mendpact.behavior.v1"
+    run_id: str = Field(default_factory=lambda: str(uuid4()))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    target: str
+    status: ScanStatus
+    suite_name: str
+    driver: str
+    model: str
+    repetitions: int = Field(ge=1)
+    tool_catalog: list[str] = Field(default_factory=list)
+    trials: list[BehaviorTrial] = Field(default_factory=list)
+    summary: BehaviorSummary | None = None
     errors: list[str] = Field(default_factory=list)
 
 
