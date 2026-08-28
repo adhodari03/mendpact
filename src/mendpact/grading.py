@@ -54,6 +54,7 @@ def grade_tool_call(
     tool_by_name = {tool.name: tool for tool in tools}
     selected = trace.selected_tool
     tool_selected = selected is not None
+    single_tool_selected = trace.tool_call_count == 1
     tool_exists = selected in tool_by_name if selected is not None else False
     expected_tool_selected = selected == scenario.expectation.tool
     forbidden_tool_selected = selected in scenario.expectation.forbidden_tools
@@ -69,9 +70,15 @@ def grade_tool_call(
         )
     if forbidden_tool_selected:
         reasons.append(f"Selected forbidden tool '{selected}'.")
+    if tool_selected and not single_tool_selected:
+        reasons.append(
+            f"Expected exactly one tool call, but received {trace.tool_call_count}."
+        )
 
     arguments_valid = False
-    if tool_exists and selected is not None:
+    if trace.arguments_parse_error is not None:
+        reasons.append(f"Could not parse tool arguments: {trace.arguments_parse_error}")
+    elif tool_exists and selected is not None:
         arguments_valid, schema_reason = _validate_arguments(
             trace.arguments, tool_by_name[selected]
         )
@@ -91,6 +98,7 @@ def grade_tool_call(
     passed = all(
         (
             tool_selected,
+            single_tool_selected,
             tool_exists,
             expected_tool_selected,
             arguments_valid,
@@ -101,6 +109,7 @@ def grade_tool_call(
     return BehaviorGrade(
         passed=passed,
         tool_selected=tool_selected,
+        single_tool_selected=single_tool_selected,
         tool_exists=tool_exists,
         expected_tool_selected=expected_tool_selected,
         arguments_valid=arguments_valid,

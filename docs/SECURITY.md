@@ -14,6 +14,19 @@ execution, credentials, and stored evidence within explicit boundaries.
 - The conformance wrapper executes a pinned package with an argument list rather than a shell.
 - Only the initialization scenario runs without explicit tool-call authorization.
 - Behavioral replay discovers tool metadata but neither contacts a model nor invokes an MCP tool.
+- Live behavioral evaluation asks a provider to select a tool but does not execute that tool.
+
+## Live model evaluation
+
+The OpenAI driver reads `OPENAI_API_KEY` from the process environment and passes it directly to
+the official SDK. MendPact does not include the key in traces, reports, replay files, or logs.
+Requests set `store=False`, disable parallel tool calls, and request exactly one function call.
+
+Live evaluation sends the scenario task plus discovered MCP tool names, descriptions, and input
+schemas to OpenAI. Do not use it when those values contain data that cannot be shared with the
+provider. Reports retain normalized choices, response identifiers, latency, and token counts but
+not the complete provider response. A real `.env` file remains ignored; `.env.example` contains
+only the variable name.
 
 ## Conformance execution
 

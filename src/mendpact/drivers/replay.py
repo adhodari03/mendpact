@@ -52,6 +52,7 @@ class ReplayDriver:
             model=self.model,
             available_tools=sorted(tool.name for tool in tools),
             selected_tool=decision.selected_tool,
+            tool_call_count=1 if decision.selected_tool is not None else 0,
             arguments=decision.arguments,
             message=decision.message,
         )

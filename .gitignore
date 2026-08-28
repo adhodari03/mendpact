@@ -96,6 +96,7 @@ pnpm-debug.log*
 /mendpact-report*.json
 /conformance-report*.json
 /behavior-report*.json
+/replay*.json
 /reports/
 /results/
 

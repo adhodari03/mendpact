@@ -1,7 +1,7 @@
 import pytest
 from mcp.server import MCPServer
 
-from mendpact.behavior import evaluate_mcp_target
+from mendpact.behavior import evaluate_mcp_target, replay_plan_from_report
 from mendpact.domain import (
     ArgumentMatch,
     BehaviorExpectation,
@@ -100,6 +100,20 @@ def test_grades_json_schema_and_argument_match_separately() -> None:
     assert subset.passed
 
 
+def test_rejects_multiple_calls_and_unparseable_arguments() -> None:
+    trace = _trace("read_status", {"component": "api"})
+    trace.tool_call_count = 2
+    trace.arguments_parse_error = "invalid JSON"
+
+    grade = grade_tool_call(_scenario(), trace, [_tool()])
+
+    assert not grade.passed
+    assert not grade.single_tool_selected
+    assert not grade.arguments_valid
+    assert any("exactly one tool call" in reason for reason in grade.reasons)
+    assert any("Could not parse" in reason for reason in grade.reasons)
+
+
 @pytest.mark.anyio
 async def test_evaluates_replayed_decision_against_in_memory_server() -> None:
     server = MCPServer("behavior-server")
@@ -167,3 +181,33 @@ async def test_summarizes_repeated_tool_confusion() -> None:
     assert report.summary is not None
     assert report.summary.failed_trials == 2
     assert report.summary.confusion_edges[0].count == 2
+
+
+@pytest.mark.anyio
+async def test_exports_complete_behavior_run_as_replay_plan() -> None:
+    server = MCPServer("record-server")
+
+    @server.tool()
+    def read_status(component: str) -> str:
+        """Read component status."""
+        return component
+
+    suite = BehaviorSuite(name="Record behavior", scenarios=[_scenario()])
+    driver = ReplayDriver(
+        ReplayPlan(
+            model="fixture-model",
+            decisions=[
+                ReplayDecision(
+                    scenario_id="read-api-status",
+                    selected_tool="read_status",
+                    arguments={"component": "api"},
+                )
+            ],
+        )
+    )
+    report = await evaluate_mcp_target(server, suite, driver)
+
+    replay = replay_plan_from_report(report)
+
+    assert replay.model == "fixture-model"
+    assert replay.decisions[0].selected_tool == "read_status"

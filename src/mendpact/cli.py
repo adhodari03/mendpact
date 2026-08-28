@@ -12,9 +12,19 @@ import typer
 from rich.console import Console
 
 from mendpact import __version__
-from mendpact.behavior import evaluate_mcp_url, load_behavior_suite, load_replay_plan
+from mendpact.behavior import (
+    evaluate_mcp_url,
+    load_behavior_suite,
+    load_replay_plan,
+    replay_plan_from_report,
+)
 from mendpact.conformance import run_server_conformance
 from mendpact.domain import ScanStatus, Severity
+from mendpact.drivers.base import ModelDriver
+from mendpact.drivers.openai import (
+    OpenAIDriverConfigurationError,
+    OpenAIResponsesDriver,
+)
 from mendpact.drivers.replay import ReplayDriver
 from mendpact.reporting import (
     render_behavior_report,
@@ -23,6 +33,7 @@ from mendpact.reporting import (
     write_behavior_report,
     write_conformance_report,
     write_json_report,
+    write_replay_plan,
 )
 from mendpact.scanner import scan_mcp_url
 from mendpact.security.targets import TargetPolicy
@@ -37,6 +48,27 @@ console = Console()
 
 class BehaviorDriver(StrEnum):
     REPLAY = "replay"
+    OPENAI = "openai"
+
+
+def _build_behavior_driver(
+    driver: BehaviorDriver,
+    *,
+    replay: Path | None,
+    model: str | None,
+) -> ModelDriver:
+    if driver == BehaviorDriver.REPLAY:
+        if replay is None:
+            raise ValueError("--replay is required when --driver is replay.")
+        if model is not None:
+            raise ValueError("--model can only be used with --driver openai.")
+        return ReplayDriver(load_replay_plan(replay))
+
+    if replay is not None:
+        raise ValueError("--replay can only be used with --driver replay.")
+    if model is None:
+        raise ValueError("--model is required when --driver is openai.")
+    return OpenAIResponsesDriver(model=model)
 
 
 def _version_callback(value: bool) -> None:
@@ -118,7 +150,7 @@ def evaluate(
         ),
     ],
     replay: Annotated[
-        Path,
+        Path | None,
         typer.Option(
             "--replay",
             exists=True,
@@ -126,7 +158,7 @@ def evaluate(
             readable=True,
             help="Recorded JSON tool decisions to replay",
         ),
-    ],
+    ] = None,
     driver: Annotated[
         BehaviorDriver,
         typer.Option(
@@ -135,6 +167,10 @@ def evaluate(
             help="Model decision driver",
         ),
     ] = BehaviorDriver.REPLAY,
+    model: Annotated[
+        str | None,
+        typer.Option(help="OpenAI model name used for live evaluations"),
+    ] = None,
     repetitions: Annotated[
         int,
         typer.Option(min=1, max=100, help="Number of decisions per scenario"),
@@ -142,6 +178,13 @@ def evaluate(
     output: Annotated[
         Path | None,
         typer.Option("--output", "-o", help="Write the full JSON report to this path"),
+    ] = None,
+    save_replay: Annotated[
+        Path | None,
+        typer.Option(
+            "--save-replay",
+            help="Save complete model decisions as deterministic replay input",
+        ),
     ] = None,
     allow_private: Annotated[
         bool,
@@ -152,13 +195,13 @@ def evaluate(
         typer.Option(help="Allow plaintext HTTP for deliberate local development"),
     ] = False,
 ) -> None:
-    """Grade recorded model tool decisions against an MCP endpoint."""
+    """Grade replayed or live model tool decisions against an MCP endpoint."""
 
     try:
         behavior_suite = load_behavior_suite(scenario)
-        model_driver = ReplayDriver(load_replay_plan(replay))
-    except (OSError, ValueError) as exc:
-        console.print(f"[red]Could not load behavior inputs:[/] {exc}")
+        model_driver = _build_behavior_driver(driver, replay=replay, model=model)
+    except (OSError, ValueError, OpenAIDriverConfigurationError) as exc:
+        console.print(f"[red]Could not configure behavior evaluation:[/] {exc}")
         raise typer.Exit(code=2) from exc
 
     report = anyio.run(
@@ -183,6 +226,14 @@ def evaluate(
             console.print(f"[red]Could not write report:[/] {exc}")
             raise typer.Exit(code=2) from exc
         console.print(f"JSON report: {output}")
+
+    if save_replay is not None:
+        try:
+            write_replay_plan(replay_plan_from_report(report), save_replay)
+        except (OSError, ValueError) as exc:
+            console.print(f"[red]Could not write replay data:[/] {exc}")
+            raise typer.Exit(code=2) from exc
+        console.print(f"Replay data: {save_replay}")
 
     if report.status == ScanStatus.ERROR:
         raise typer.Exit(code=2)

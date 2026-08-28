@@ -15,6 +15,7 @@ from mendpact.domain import (
     CapabilityGraph,
     ConfusionEdge,
     NodeKind,
+    ReplayDecision,
     ReplayPlan,
     ScanStatus,
 )
@@ -33,6 +34,34 @@ def load_replay_plan(path: Path) -> ReplayPlan:
     """Load and validate versioned JSON replay decisions."""
 
     return ReplayPlan.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def replay_plan_from_report(report: BehaviorReport) -> ReplayPlan:
+    """Convert a complete behavior report into deterministic replay input."""
+
+    expected_trials = (
+        report.summary.scenario_count * report.repetitions if report.summary is not None else 0
+    )
+    if not report.trials or len(report.trials) != expected_trials:
+        raise ValueError("A complete behavior run is required to save replay data.")
+    if any(trial.trace.tool_call_count > 1 for trial in report.trials):
+        raise ValueError("Runs containing multiple tool calls cannot be replayed faithfully.")
+    if any(trial.trace.arguments_parse_error is not None for trial in report.trials):
+        raise ValueError("Runs containing unparseable arguments cannot be saved as replay data.")
+
+    return ReplayPlan(
+        model=report.model,
+        decisions=[
+            ReplayDecision(
+                scenario_id=trial.scenario.id,
+                attempt=trial.trace.attempt,
+                selected_tool=trial.trace.selected_tool,
+                arguments=trial.trace.arguments,
+                message=trial.trace.message,
+            )
+            for trial in report.trials
+        ],
+    )
 
 
 def _summary(suite: BehaviorSuite, trials: list[BehaviorTrial]) -> BehaviorSummary:
@@ -58,6 +87,10 @@ def _summary(suite: BehaviorSuite, trials: list[BehaviorTrial]) -> BehaviorSumma
         passed_trials=passed_trials,
         failed_trials=trial_count - passed_trials,
         pass_rate=passed_trials / trial_count if trial_count else 0.0,
+        input_tokens=sum(trial.trace.input_tokens or 0 for trial in trials),
+        output_tokens=sum(trial.trace.output_tokens or 0 for trial in trials),
+        total_tokens=sum(trial.trace.total_tokens or 0 for trial in trials),
+        total_latency_ms=sum(trial.trace.latency_ms or 0 for trial in trials),
         confusion_edges=confusion_edges,
     )
 
