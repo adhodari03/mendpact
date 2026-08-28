@@ -1,0 +1,21 @@
+{
+  "schema_version": "mendpact.scenario.v1",
+  "name": "Fixture read behavior",
+  "scenarios": [
+    {
+      "id": "read-api-status",
+      "name": "Read API status",
+      "task": "Check the health status of the API component without changing any state.",
+      "expectation": {
+        "tool": "read_status",
+        "arguments": {
+          "component": "api"
+        },
+        "argument_match": "exact",
+        "forbidden_tools": [
+          "delete_project"
+        ]
+      }
+    }
+  ]
+}

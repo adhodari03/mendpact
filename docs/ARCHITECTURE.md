@@ -1,8 +1,8 @@
 # Architecture
 
 MendPact separates protocol discovery, deterministic analysis, model drivers, grading, and
-reporting. The current vertical slice implements the first, second, and final layers without
-requiring a paid model API.
+reporting. The current vertical slices cover metadata scanning, upstream conformance, and
+replayable behavioral evaluation without requiring a paid model API.
 
 ```text
 CLI / GitHub Action
@@ -17,6 +17,22 @@ target validation ---> MCP adapter ---> capability graph
                                 JSON + terminal report
 ```
 
+Behavioral evaluation reuses the same discovered capability graph:
+
+```text
+scenario suite ---> ModelDriver ---> normalized tool-call trace
+                                          |
+MCP adapter ---> discovered tool schemas -+-> deterministic grader
+                                                   |
+                                                   v
+                                      behavior report + confusion edges
+```
+
+The replay driver reads recorded choices instead of contacting a model. It never executes the
+selected MCP tool; the selected name and arguments are evidence that the grader checks against
+the discovered catalog and JSON Schema. A live provider driver can later produce the same trace
+without changing the evaluation or reporting layers.
+
 The separate `mendpact conformance` path invokes the pinned official MCP conformance CLI as a
 child process. It validates the target first, runs the upstream package without a shell, reads
 the emitted `checks.json` files from an ephemeral directory, and normalizes them into the
@@ -29,14 +45,16 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `adapters/` converts protocol-specific objects into the domain model.
 - `checks/` operates only on the normalized capability graph.
 - `scanner.py` orchestrates a run and determines its CI status.
+- `behavior.py` orchestrates replayable task-to-tool evaluations.
+- `drivers/` converts provider decisions into normalized traces.
+- `grading.py` validates selected tools, arguments, and behavioral expectations.
 - `reporting.py` renders stable machine and human interfaces.
 - `security/` rejects unsafe targets before network access.
 - `conformance.py` owns the pinned external runner boundary and result normalization.
 
-The next provider layer will implement a small `ModelDriver` protocol. OpenAI's implementation
-will use Responses API tool calling, while Anthropic and Google implementations will emit the
-same MendPact trace model. The evaluation engine will therefore remain comparable across model
-providers.
+The `ModelDriver` protocol is deliberately small. OpenAI's implementation will use Responses
+API tool calling, while Anthropic and Google implementations will emit the same MendPact trace
+model. The evaluation engine will therefore remain comparable across model providers.
 
 ## Why PostgreSQL later, not a graph database now?
 

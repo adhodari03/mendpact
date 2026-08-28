@@ -5,11 +5,12 @@ from mendpact.cli import app
 runner = CliRunner()
 
 
-def test_help_lists_conformance_command() -> None:
+def test_help_lists_main_commands() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
     assert "conformance" in result.stdout
+    assert "evaluate" in result.stdout
 
 
 def test_suite_requires_explicit_tool_call_authorization() -> None:
