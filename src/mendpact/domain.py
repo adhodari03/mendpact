@@ -46,6 +46,13 @@ class ScanStatus(StrEnum):
     ERROR = "error"
 
 
+class RegressionImpact(StrEnum):
+    """How a baseline comparison finding affects the evaluation result."""
+
+    WARNING = "warning"
+    FAILURE = "failure"
+
+
 class ConformanceCheckStatus(StrEnum):
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
@@ -286,6 +293,67 @@ class BehaviorSummary(BaseModel):
     confusion_edges: list[ConfusionEdge] = Field(default_factory=list)
 
 
+class BehaviorThresholds(BaseModel):
+    """CI policy stored with a behavior baseline."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_pass_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+    max_pass_rate_drop: float = Field(default=0.0, ge=0.0, le=1.0)
+    max_failed_trials: int | None = Field(default=None, ge=0)
+    allow_new_confusions: bool = False
+    require_same_scenarios: bool = True
+    require_same_trial_count: bool = True
+    fail_on_driver_change: bool = False
+    fail_on_model_change: bool = False
+
+
+class BehaviorBaseline(BaseModel):
+    """Versioned behavioral snapshot used to detect future regressions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["mendpact.baseline.v1"] = "mendpact.baseline.v1"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    source_run_id: str
+    suite_name: str
+    driver: str
+    model: str
+    repetitions: int = Field(ge=1)
+    scenario_ids: list[str] = Field(min_length=1)
+    trial_count: int = Field(ge=1)
+    passed_trials: int = Field(ge=0)
+    failed_trials: int = Field(ge=0)
+    pass_rate: float = Field(ge=0.0, le=1.0)
+    confusion_edges: list[ConfusionEdge] = Field(default_factory=list)
+    thresholds: BehaviorThresholds = Field(default_factory=BehaviorThresholds)
+
+
+class RegressionFinding(BaseModel):
+    """One meaningful difference between a baseline and a current run."""
+
+    rule_id: str
+    impact: RegressionImpact
+    message: str
+    baseline_value: Any = None
+    current_value: Any = None
+
+
+class BehaviorRegression(BaseModel):
+    """Result of comparing a behavior report with a saved baseline."""
+
+    schema_version: Literal["mendpact.regression.v1"] = "mendpact.regression.v1"
+    status: ScanStatus
+    baseline_run_id: str
+    baseline_pass_rate: float = Field(ge=0.0, le=1.0)
+    current_pass_rate: float = Field(ge=0.0, le=1.0)
+    pass_rate_drop: float = Field(ge=0.0, le=1.0)
+    z_score: float | None = None
+    one_sided_p_value: float | None = Field(default=None, ge=0.0, le=1.0)
+    thresholds: BehaviorThresholds
+    findings: list[RegressionFinding] = Field(default_factory=list)
+
+
 class BehaviorReport(BaseModel):
     schema_version: Literal["mendpact.behavior.v1"] = "mendpact.behavior.v1"
     run_id: str = Field(default_factory=lambda: str(uuid4()))
@@ -299,6 +367,7 @@ class BehaviorReport(BaseModel):
     tool_catalog: list[str] = Field(default_factory=list)
     trials: list[BehaviorTrial] = Field(default_factory=list)
     summary: BehaviorSummary | None = None
+    regression: BehaviorRegression | None = None
     errors: list[str] = Field(default_factory=list)
 
 

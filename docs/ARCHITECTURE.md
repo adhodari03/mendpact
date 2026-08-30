@@ -26,12 +26,22 @@ MCP adapter ---> discovered tool schemas -+-> deterministic grader
                                                    |
                                                    v
                                       behavior report + confusion edges
+                                                   |
+                                                   v
+                                     versioned baseline comparison
 ```
 
 The replay driver reads recorded choices instead of contacting a model. The OpenAI driver sends
 the scenario task and normalized function schemas to the Responses API, then records the returned
 choice without executing it. Both drivers emit the same trace, so the grader checks the selected
 name and arguments against the discovered catalog and JSON Schema without provider-specific code.
+
+The regression layer converts a complete behavior report into a compact baseline containing the
+scenario set, sample size, quality summary, known confusion edges, provider metadata, and CI
+policy. Later runs are compared without provider-specific logic. The machine report retains the
+raw trial evidence, threshold findings, and a one-sided pass-rate statistic; configured
+thresholds determine the exit code. A failed comparison cannot be promoted accidentally when a
+baseline is loaded and saved in the same command.
 
 The separate `mendpact conformance` path invokes the pinned official MCP conformance CLI as a
 child process. It validates the target first, runs the upstream package without a shell, reads
@@ -48,6 +58,7 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `behavior.py` orchestrates replayable task-to-tool evaluations.
 - `drivers/` converts provider decisions into normalized traces.
 - `grading.py` validates selected tools, arguments, and behavioral expectations.
+- `regression.py` creates versioned baselines and evaluates compatibility thresholds.
 - `reporting.py` renders stable machine and human interfaces.
 - `security/` rejects unsafe targets before network access.
 - `conformance.py` owns the pinned external runner boundary and result normalization.

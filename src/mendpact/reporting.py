@@ -8,9 +8,11 @@ from rich.console import Console
 from rich.table import Table
 
 from mendpact.domain import (
+    BehaviorBaseline,
     BehaviorReport,
     ConformanceCheckStatus,
     ConformanceReport,
+    RegressionImpact,
     ReplayPlan,
     ScanReport,
     ScanStatus,
@@ -27,6 +29,10 @@ def write_conformance_report(report: ConformanceReport, destination: Path) -> No
 
 def write_behavior_report(report: BehaviorReport, destination: Path) -> None:
     destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+
+def write_behavior_baseline(baseline: BehaviorBaseline, destination: Path) -> None:
+    destination.write_text(baseline.model_dump_json(indent=2), encoding="utf-8")
 
 
 def write_replay_plan(plan: ReplayPlan, destination: Path) -> None:
@@ -152,6 +158,30 @@ def render_behavior_report(report: BehaviorReport, console: Console) -> None:
                 f"{report.summary.output_tokens} output) | "
                 f"Latency: {report.summary.total_latency_ms:.0f} ms"
             )
+
+    if report.regression:
+        regression = report.regression
+        statistics = ""
+        if regression.one_sided_p_value is not None:
+            statistics = f" | One-sided p: {regression.one_sided_p_value:.3f}"
+        console.print(
+            f"Baseline: {regression.baseline_pass_rate:.1%} | "
+            f"Current: {regression.current_pass_rate:.1%} | "
+            f"Drop: {regression.pass_rate_drop:.1%}{statistics}"
+        )
+        if regression.findings:
+            regression_table = Table(show_header=True, header_style="bold")
+            regression_table.add_column("Impact", width=9)
+            regression_table.add_column("Rule", width=12)
+            regression_table.add_column("Baseline difference", overflow="fold")
+            for finding in regression.findings:
+                style = "red" if finding.impact == RegressionImpact.FAILURE else "yellow"
+                regression_table.add_row(
+                    f"[{style}]{finding.impact.value.upper()}[/]",
+                    finding.rule_id,
+                    finding.message,
+                )
+            console.print(regression_table)
 
     failed_trials = [trial for trial in report.trials if not trial.grade.passed]
     if not failed_trials:

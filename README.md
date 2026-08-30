@@ -78,7 +78,7 @@ not execute any MCP tool:
 mendpact evaluate http://127.0.0.1:8000/mcp \
   --scenario examples/scenarios/read-status.json \
   --driver openai \
-  --model gpt-5.6 \
+  --model gpt-5.6-luna \
   --allow-private \
   --allow-insecure-http \
   --output behavior-report.json \
@@ -88,6 +88,41 @@ mendpact evaluate http://127.0.0.1:8000/mcp \
 The saved replay file can reproduce the decisions later without another model call. MendPact
 uses function definitions and single-call controls described in the
 [official OpenAI function-calling guide](https://developers.openai.com/api/docs/guides/function-calling).
+
+### Regression baselines
+
+Save a reviewed behavior run as the expected result for later changes:
+
+```bash
+mendpact evaluate http://127.0.0.1:8000/mcp \
+  --scenario examples/scenarios/read-status.json \
+  --replay examples/replays/read-status.json \
+  --allow-private \
+  --allow-insecure-http \
+  --save-baseline behavior-baseline.json \
+  --min-pass-rate 0.95 \
+  --max-pass-rate-drop 0.02
+```
+
+Then compare every candidate change with that versioned baseline:
+
+```bash
+mendpact evaluate http://127.0.0.1:8000/mcp \
+  --scenario examples/scenarios/read-status.json \
+  --replay examples/replays/read-status.json \
+  --baseline behavior-baseline.json \
+  --allow-private \
+  --allow-insecure-http \
+  --output behavior-report.json
+```
+
+The baseline stores the scenario set, sample size, pass rate, failed-trial allowance, known
+wrong-tool confusions, driver, model, and CI thresholds. A comparison fails when quality drops
+beyond policy or the sample is no longer comparable. Driver and model changes are visible
+warnings by default because testing a new model is a normal use case. The report also includes
+a one-sided proportion-test p-value as supporting statistical context; predictable thresholds
+remain the source of the CI exit code. See the included
+[`read-status` baseline](examples/baselines/read-status.json) for the JSON format.
 
 ## MCP conformance
 
@@ -151,7 +186,8 @@ CI also starts the isolated fixture and runs the pinned `server-initialize` conf
 The normalized conformance JSON is uploaded as a workflow artifact.
 
 See [the architecture](docs/ARCHITECTURE.md), [security boundary](docs/SECURITY.md), and
-[roadmap](docs/ROADMAP.md) for the technical direction.
+[roadmap](docs/ROADMAP.md) for the technical direction. The [cost guide](docs/COSTS.md) explains
+how to keep routine evaluation free and reserve small paid runs for provider validation.
 
 ## License
 

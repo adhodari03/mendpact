@@ -1,0 +1,27 @@
+{
+  "schema_version": "mendpact.baseline.v1",
+  "created_at": "2026-08-30T00:00:00Z",
+  "source_run_id": "fixture-read-status-v1",
+  "suite_name": "Fixture read behavior",
+  "driver": "replay",
+  "model": "fixture-replay-v1",
+  "repetitions": 1,
+  "scenario_ids": [
+    "read-api-status"
+  ],
+  "trial_count": 1,
+  "passed_trials": 1,
+  "failed_trials": 0,
+  "pass_rate": 1.0,
+  "confusion_edges": [],
+  "thresholds": {
+    "min_pass_rate": 1.0,
+    "max_pass_rate_drop": 0.0,
+    "max_failed_trials": 0,
+    "allow_new_confusions": false,
+    "require_same_scenarios": true,
+    "require_same_trial_count": true,
+    "fail_on_driver_change": false,
+    "fail_on_model_change": false
+  }
+}

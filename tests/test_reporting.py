@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from mendpact.domain import (
+    BehaviorBaseline,
     BehaviorReport,
     ConformanceReport,
     ReplayDecision,
@@ -11,6 +12,7 @@ from mendpact.domain import (
     Severity,
 )
 from mendpact.reporting import (
+    write_behavior_baseline,
     write_behavior_report,
     write_conformance_report,
     write_json_report,
@@ -65,6 +67,28 @@ def test_writes_versioned_behavior_report(tmp_path: Path) -> None:
     payload = json.loads(destination.read_text(encoding="utf-8"))
     assert payload["schema_version"] == "mendpact.behavior.v1"
     assert payload["driver"] == "replay"
+
+
+def test_writes_versioned_behavior_baseline(tmp_path: Path) -> None:
+    destination = tmp_path / "baseline.json"
+    baseline = BehaviorBaseline(
+        source_run_id="run-1",
+        suite_name="Read behavior",
+        driver="replay",
+        model="fixture-model",
+        repetitions=1,
+        scenario_ids=["read-status"],
+        trial_count=1,
+        passed_trials=1,
+        failed_trials=0,
+        pass_rate=1.0,
+    )
+
+    write_behavior_baseline(baseline, destination)
+
+    payload = json.loads(destination.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "mendpact.baseline.v1"
+    assert payload["source_run_id"] == "run-1"
 
 
 def test_writes_versioned_replay_plan(tmp_path: Path) -> None:
