@@ -30,14 +30,21 @@
 - [x] behavior-scenario blast-radius mapping
 - [x] CI thresholds and offline report comparison
 
-## Milestone 0.4 — cross-provider matrix
+## Milestone 0.4 — unified CI guard
+
+- [x] single-scan guard orchestration
+- [x] affected-scenario replay selection
+- [x] versioned composite guard report
+- [x] deterministic CI smoke workflow
+
+## Milestone 0.5 — cross-provider matrix
 
 - Anthropic and Gemini drivers
 - provider and model snapshots
 - semantic grading calibrated against human labels
 - compatibility diff between agent versions and model versions
 
-## Milestone 0.5 — hosted beta
+## Milestone 0.6 — hosted beta
 
 - projects, authentication, and encrypted bring-your-own-key storage
 - scheduled scans and GitHub checks

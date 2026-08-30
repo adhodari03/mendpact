@@ -14,6 +14,7 @@ from mendpact.domain import (
     ConformanceReport,
     ContractDiffReport,
     ContractImpact,
+    GuardReport,
     RegressionImpact,
     ReplayPlan,
     ScanReport,
@@ -34,6 +35,10 @@ def write_behavior_report(report: BehaviorReport, destination: Path) -> None:
 
 
 def write_contract_diff_report(report: ContractDiffReport, destination: Path) -> None:
+    destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+
+def write_guard_report(report: GuardReport, destination: Path) -> None:
     destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
 
 
@@ -174,6 +179,30 @@ def render_contract_diff_report(report: ContractDiffReport, console: Console) ->
             ", ".join(change.affected_scenarios) or "-",
         )
     console.print(table)
+
+
+def render_guard_report(report: GuardReport, console: Console) -> None:
+    status_style = {
+        ScanStatus.PASSED: "bold green",
+        ScanStatus.FAILED: "bold red",
+        ScanStatus.ERROR: "bold red",
+    }[report.status]
+    summary = report.summary
+    console.print(f"MendPact guard: [{status_style}]{report.status.value.upper()}[/]")
+    console.print(f"Target: {report.target}")
+    console.print(
+        f"Scan: {summary.scan_status.value} | "
+        f"Contract: {summary.contract_status.value if summary.contract_status else 'skipped'} | "
+        f"Behavior: {summary.behavior_status.value if summary.behavior_status else 'skipped'}"
+    )
+    console.print(
+        f"Affected scenarios: {summary.affected_scenario_count} | "
+        f"Evaluated scenarios: {summary.evaluated_scenario_count}"
+    )
+    if report.behavior_skipped_reason:
+        console.print(f"Behavior replay: {report.behavior_skipped_reason}")
+    for error in report.errors:
+        console.print(f"[red]Error:[/] {error}")
 
 
 def render_behavior_report(report: BehaviorReport, console: Console) -> None:

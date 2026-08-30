@@ -23,6 +23,7 @@ def test_help_lists_main_commands() -> None:
     assert "conformance" in result.stdout
     assert "evaluate" in result.stdout
     assert "diff" in result.stdout
+    assert "guard" in result.stdout
 
 
 def test_suite_requires_explicit_tool_call_authorization() -> None:
@@ -191,3 +192,42 @@ def test_contract_diff_command_writes_report_and_fails_on_breaking_change(
     assert json.loads(output.read_text(encoding="utf-8"))["schema_version"] == (
         "mendpact.contract-diff.v1"
     )
+
+
+def test_guard_requires_scenario_and_replay_together(tmp_path: Path) -> None:
+    baseline = _write_scan(tmp_path, "baseline", include_tool=True)
+    scenario = _write_scenario(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "guard",
+            "https://example.com/mcp",
+            "--baseline",
+            str(baseline),
+            "--scenario",
+            str(scenario),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "--scenario and --replay must be supplied together" in result.stdout
+
+
+def test_guard_does_not_overwrite_baseline(tmp_path: Path) -> None:
+    baseline = _write_scan(tmp_path, "baseline", include_tool=True)
+
+    result = runner.invoke(
+        app,
+        [
+            "guard",
+            "https://example.com/mcp",
+            "--baseline",
+            str(baseline),
+            "--save-scan",
+            str(baseline),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "cannot overwrite a guard input file" in result.stdout

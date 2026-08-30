@@ -8,6 +8,8 @@ from mendpact.domain import (
     ContractDiffReport,
     ContractDiffSummary,
     ContractImpact,
+    GuardReport,
+    GuardSummary,
     ReplayDecision,
     ReplayPlan,
     ScanReport,
@@ -19,6 +21,7 @@ from mendpact.reporting import (
     write_behavior_report,
     write_conformance_report,
     write_contract_diff_report,
+    write_guard_report,
     write_json_report,
     write_replay_plan,
 )
@@ -115,6 +118,26 @@ def test_writes_versioned_contract_diff_report(tmp_path: Path) -> None:
 
     payload = json.loads(destination.read_text(encoding="utf-8"))
     assert payload["schema_version"] == "mendpact.contract-diff.v1"
+
+
+def test_writes_versioned_guard_report(tmp_path: Path) -> None:
+    destination = tmp_path / "guard.json"
+    scan = ScanReport(
+        target="https://candidate.example/mcp",
+        status=ScanStatus.PASSED,
+        failure_threshold=Severity.HIGH,
+    )
+    report = GuardReport(
+        target=scan.target,
+        status=ScanStatus.PASSED,
+        scan=scan,
+        summary=GuardSummary(scan_status=ScanStatus.PASSED),
+    )
+
+    write_guard_report(report, destination)
+
+    payload = json.loads(destination.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "mendpact.guard.v1"
 
 
 def test_writes_versioned_replay_plan(tmp_path: Path) -> None:

@@ -57,7 +57,18 @@ jobs:
           --replay examples/replays/read-status.json
           --allow-private
           --allow-insecure-http
-          --output behavior-report.json    
+          --output behavior-report.json
+      - name: Unified MCP guard smoke test
+        run: >-
+          mendpact guard
+          http://127.0.0.1:8000/mcp
+          --baseline examples/guard/baseline-scan.json
+          --scenario examples/scenarios/read-status.json
+          --replay examples/replays/read-status.json
+          --scan-fail-on critical
+          --allow-private
+          --allow-insecure-http
+          --output guard-report.json
       - name: MCP conformance smoke test
         run: >-
           mendpact conformance
@@ -78,4 +89,11 @@ jobs:
         with:
           name: mendpact-contract-diff-report
           path: contract-diff-report.json
+          if-no-files-found: ignore
+      - name: Upload guard report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mendpact-guard-report
+          path: guard-report.json
           if-no-files-found: ignore

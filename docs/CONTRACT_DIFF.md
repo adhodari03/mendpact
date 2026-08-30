@@ -62,3 +62,7 @@ When a behavior suite is supplied, a changed or removed tool is linked to scenar
 or forbid it. A newly added tool is linked to every scenario because it can compete with existing
 tools during model selection. This mapping identifies which deterministic replays or live model
 checks should be rerun; contract diff itself remains provider-free.
+
+Server node IDs commonly include environment-specific endpoint URLs. MendPact normalizes the
+server side of graph relationships during comparison so staging and production scans do not
+create false edge changes solely because their hostnames or ports differ.

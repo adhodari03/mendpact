@@ -9,6 +9,7 @@ from typing import Any, TypeGuard
 
 from mendpact.domain import (
     BehaviorSuite,
+    CapabilityEdge,
     CapabilityGraph,
     CapabilityNode,
     ContractChange,
@@ -151,7 +152,7 @@ def _graph_changes(
     candidate: CapabilityGraph,
     suite: BehaviorSuite | None,
 ) -> list[ContractChange]:
-    changes = _server_changes(baseline, candidate)
+    changes = _server_changes(baseline, candidate, suite)
     baseline_nodes = {
         node.id: node for node in baseline.nodes if node.kind != NodeKind.SERVER
     }
@@ -215,11 +216,11 @@ def _edge_changes(
     candidate: CapabilityGraph,
 ) -> list[ContractChange]:
     baseline_edges = {
-        _edge_key(edge.source, edge.target, edge.relationship.value): edge
+        _comparison_edge_key(baseline, edge): edge
         for edge in baseline.edges
     }
     candidate_edges = {
-        _edge_key(edge.source, edge.target, edge.relationship.value): edge
+        _comparison_edge_key(candidate, edge): edge
         for edge in candidate.edges
     }
     changes: list[ContractChange] = []
@@ -252,9 +253,20 @@ def _edge_changes(
     return changes
 
 
+def _comparison_edge_key(
+    graph: CapabilityGraph,
+    edge: CapabilityEdge,
+) -> tuple[str, str, str]:
+    nodes = {node.id: node for node in graph.nodes}
+    source = nodes[edge.source]
+    normalized_source = "server" if source.kind == NodeKind.SERVER else edge.source
+    return _edge_key(normalized_source, edge.target, edge.relationship.value)
+
+
 def _server_changes(
     baseline: CapabilityGraph,
     candidate: CapabilityGraph,
+    suite: BehaviorSuite | None,
 ) -> list[ContractChange]:
     changes: list[ContractChange] = []
     pairs = [
@@ -301,6 +313,11 @@ def _server_changes(
     ]
     for rule_id, impact, path, message, before, after in pairs:
         if before != after:
+            affected = (
+                sorted(scenario.id for scenario in suite.scenarios)
+                if rule_id == "MP-DIFF-005" and suite is not None
+                else []
+            )
             changes.append(
                 _change(
                     rule_id,
@@ -311,6 +328,7 @@ def _server_changes(
                     message,
                     before=before,
                     after=after,
+                    affected_scenarios=affected,
                 )
             )
     return changes
