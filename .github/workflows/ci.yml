@@ -42,6 +42,15 @@ jobs:
           done
           cat /tmp/mendpact-fixture.log
           exit 1
+      - name: Behavioral replay smoke test
+        run: >-
+          mendpact evaluate
+          http://127.0.0.1:8000/mcp
+          --scenario examples/scenarios/read-status.json
+          --replay examples/replays/read-status.json
+          --allow-private
+          --allow-insecure-http
+          --output behavior-report.json    
       - name: MCP conformance smoke test
         run: >-
           mendpact conformance

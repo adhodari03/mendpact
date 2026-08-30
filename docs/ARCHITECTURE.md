@@ -57,6 +57,7 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `scanner.py` orchestrates a run and determines its CI status.
 - `behavior.py` orchestrates replayable task-to-tool evaluations.
 - `drivers/` converts provider decisions into normalized traces.
+- `argument_matching.py` applies scenario-approved string normalization to copied arguments.
 - `grading.py` validates selected tools, arguments, and behavioral expectations.
 - `regression.py` creates versioned baselines and evaluates compatibility thresholds.
 - `reporting.py` renders stable machine and human interfaces.

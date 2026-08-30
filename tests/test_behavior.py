@@ -4,6 +4,7 @@ from mcp.server import MCPServer
 from mendpact.behavior import evaluate_mcp_target, replay_plan_from_report
 from mendpact.domain import (
     ArgumentMatch,
+    ArgumentNormalizer,
     BehaviorExpectation,
     BehaviorScenario,
     BehaviorSuite,
@@ -32,7 +33,10 @@ def _tool(name: str = "read_status") -> CapabilityNode:
     )
 
 
-def _scenario(match: ArgumentMatch = ArgumentMatch.EXACT) -> BehaviorScenario:
+def _scenario(
+    match: ArgumentMatch = ArgumentMatch.EXACT,
+    normalization: dict[str, list[ArgumentNormalizer]] | None = None,
+) -> BehaviorScenario:
     return BehaviorScenario(
         id="read-api-status",
         name="Read API status",
@@ -41,6 +45,7 @@ def _scenario(match: ArgumentMatch = ArgumentMatch.EXACT) -> BehaviorScenario:
             tool="read_status",
             arguments={"component": "api"},
             argument_match=match,
+            argument_normalization=normalization or {},
             forbidden_tools=["delete_project"],
         ),
     )
@@ -64,6 +69,62 @@ def test_grades_expected_tool_and_valid_arguments() -> None:
     assert grade.passed
     assert grade.arguments_valid
     assert not grade.reasons
+
+
+def test_exact_arguments_remain_case_sensitive_without_normalization() -> None:
+    grade = grade_tool_call(_scenario(), _trace("read_status", {"component": "API"}), [_tool()])
+
+    assert not grade.passed
+    assert not grade.expected_arguments_match
+
+
+def test_normalizes_only_an_explicit_string_path() -> None:
+    trace = _trace("read_status", {"component": "  API "})
+    scenario = _scenario(
+        normalization={
+            "/component": [ArgumentNormalizer.TRIM, ArgumentNormalizer.CASEFOLD]
+        }
+    )
+
+    grade = grade_tool_call(scenario, trace, [_tool()])
+
+    assert grade.passed
+    assert grade.expected_arguments_match
+    assert trace.arguments == {"component": "  API "}
+
+
+def test_applies_normalization_before_subset_matching() -> None:
+    scenario = _scenario(
+        ArgumentMatch.SUBSET,
+        normalization={"/component": [ArgumentNormalizer.CASEFOLD]},
+    )
+
+    grade = grade_tool_call(
+        scenario,
+        _trace("read_status", {"component": "API", "detail": True}),
+        [
+            CapabilityNode(
+                id="tool:read_status",
+                kind=NodeKind.TOOL,
+                name="read_status",
+                input_schema={"type": "object"},
+            )
+        ],
+    )
+
+    assert grade.passed
+
+
+def test_rejects_non_string_actual_value_at_normalized_path() -> None:
+    scenario = _scenario(
+        normalization={"/component": [ArgumentNormalizer.CASEFOLD]}
+    )
+
+    grade = grade_tool_call(scenario, _trace("read_status", {"component": 7}), [_tool()])
+
+    assert not grade.passed
+    assert not grade.expected_arguments_match
+    assert any("actual string value" in reason for reason in grade.reasons)
 
 
 def test_reports_wrong_forbidden_tool() -> None:

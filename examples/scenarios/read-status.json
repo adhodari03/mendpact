@@ -12,6 +12,12 @@
           "component": "api"
         },
         "argument_match": "exact",
+        "argument_normalization": {
+          "/component": [
+            "trim",
+            "casefold"
+          ]
+        },
         "forbidden_tools": [
           "delete_project"
         ]
