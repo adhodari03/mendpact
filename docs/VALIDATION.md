@@ -112,3 +112,16 @@ The provider-free contract-diff implementation was checked with:
 The example comparison reports one risky tool-description change, one compatible optional
 argument addition, one compatible server-version change, and one affected behavior scenario.
 No MCP server, model-provider request, API key, or paid operation is needed for this test.
+
+## Unified guard validation
+
+Date: August 30, 2026
+
+The guard workflow was exercised against the independently running local MCP fixture. One
+command scanned the two-tool catalog, compared it with the committed fixture baseline, mapped a
+risky `read_status` description change to `read-api-status`, and replayed only that scenario.
+
+The emitted `mendpact.guard.v1` report passed all three configured stages. The final automated
+suite contained 87 passing tests, with Ruff and strict MyPy also passing. The local integration
+made no model-provider request, executed no MCP tool, used no API key, and incurred no provider
+cost.

@@ -450,6 +450,32 @@ class BehaviorReport(BaseModel):
     errors: list[str] = Field(default_factory=list)
 
 
+class GuardSummary(BaseModel):
+    """Stage-level outcome for one unified guard run."""
+
+    scan_status: ScanStatus
+    contract_status: ScanStatus | None = None
+    behavior_status: ScanStatus | None = None
+    affected_scenario_count: int = Field(default=0, ge=0)
+    evaluated_scenario_count: int = Field(default=0, ge=0)
+
+
+class GuardReport(BaseModel):
+    """Versioned CI report combining scan, diff, and affected replays."""
+
+    schema_version: Literal["mendpact.guard.v1"] = "mendpact.guard.v1"
+    guard_id: str = Field(default_factory=lambda: str(uuid4()))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    target: str
+    status: ScanStatus
+    scan: ScanReport
+    contract_diff: ContractDiffReport | None = None
+    behavior: BehaviorReport | None = None
+    behavior_skipped_reason: str | None = None
+    summary: GuardSummary
+    errors: list[str] = Field(default_factory=list)
+
+
 def summarize(graph: CapabilityGraph, findings: list[Finding]) -> ScanSummary:
     counts = {severity.value: 0 for severity in Severity}
     for finding in findings:

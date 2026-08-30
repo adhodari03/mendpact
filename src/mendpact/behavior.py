@@ -95,7 +95,7 @@ def _summary(suite: BehaviorSuite, trials: list[BehaviorTrial]) -> BehaviorSumma
     )
 
 
-async def _evaluate_graph(
+async def evaluate_capability_graph(
     target: str,
     graph: CapabilityGraph,
     suite: BehaviorSuite,
@@ -167,7 +167,7 @@ async def evaluate_mcp_url(
             repetitions=repetitions,
             errors=[f"{type(exc).__name__}: {exc}"],
         )
-    return await _evaluate_graph(target, graph, suite, driver, repetitions)
+    return await evaluate_capability_graph(target, graph, suite, driver, repetitions)
 
 
 async def evaluate_mcp_target(
@@ -192,4 +192,4 @@ async def evaluate_mcp_target(
             repetitions=repetitions,
             errors=[f"{type(exc).__name__}: {exc}"],
         )
-    return await _evaluate_graph(display_target, graph, suite, driver, repetitions)
+    return await evaluate_capability_graph(display_target, graph, suite, driver, repetitions)

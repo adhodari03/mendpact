@@ -98,6 +98,8 @@ pnpm-debug.log*
 /behavior-report*.json
 /behavior-baseline*.json
 /contract-diff*.json
+/guard-report*.json
+/candidate-scan*.json
 /replay*.json
 /reports/
 /results/

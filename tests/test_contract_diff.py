@@ -220,7 +220,9 @@ def test_description_and_server_instruction_changes_are_risky() -> None:
         "MP-DIFF-005",
     }
     description = next(change for change in report.changes if change.rule_id == "MP-DIFF-003")
+    instructions = next(change for change in report.changes if change.rule_id == "MP-DIFF-005")
     assert description.affected_scenarios == ["read-api-status"]
+    assert instructions.affected_scenarios == ["read-api-status", "search-logs"]
 
 
 def test_protocol_change_is_breaking() -> None:
@@ -265,6 +267,25 @@ def test_added_graph_edge_is_compatible() -> None:
     assert report.status == ScanStatus.PASSED
     assert report.changes[0].rule_id == "MP-DIFF-011"
     assert report.changes[0].impact == ContractImpact.COMPATIBLE
+
+
+def test_environment_specific_server_node_ids_do_not_create_edge_churn() -> None:
+    baseline = _report(_tool())
+    candidate = _report(_tool())
+    assert baseline.graph is not None
+    assert candidate.graph is not None
+    baseline.graph.edges = [
+        CapabilityEdge(source="server:fixture", target="tool:read_status")
+    ]
+    candidate.graph.nodes[0].id = "server:production"
+    candidate.graph.edges = [
+        CapabilityEdge(source="server:production", target="tool:read_status")
+    ]
+
+    report = diff_scan_reports(baseline, candidate)
+
+    assert report.status == ScanStatus.PASSED
+    assert report.changes == []
 
 
 def test_boolean_property_schema_changes_are_classified() -> None:

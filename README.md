@@ -158,6 +158,28 @@ the tool description changed. The command is deterministic and makes no model-pr
 network request. See the [contract-diff rule reference](docs/CONTRACT_DIFF.md) for the complete
 classification policy.
 
+## Unified CI guard
+
+`mendpact guard` combines the routine pull-request workflow into one command. It scans the
+current endpoint once, compares it with a committed contract baseline, calculates the behavior
+blast radius, and replays only affected scenarios against the discovered tool catalog.
+
+```bash
+mendpact guard http://127.0.0.1:8000/mcp \
+  --baseline examples/guard/baseline-scan.json \
+  --scenario examples/scenarios/read-status.json \
+  --replay examples/replays/read-status.json \
+  --scan-fail-on critical \
+  --allow-private \
+  --allow-insecure-http \
+  --output guard-report.json
+```
+
+The resulting `mendpact.guard.v1` report embeds scan, contract, and replay evidence under one CI
+status. The workflow does not execute MCP tools or contact a model provider, so it is
+deterministic and free to run. See the [guard reference](docs/GUARD.md) for its stage and exit-code
+policy.
+
 ## MCP conformance
 
 MendPact also wraps the official MCP server conformance framework, pinned to version `0.1.16`.
