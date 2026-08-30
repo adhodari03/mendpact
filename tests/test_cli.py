@@ -4,6 +4,14 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from mendpact.cli import app
+from mendpact.domain import (
+    CapabilityGraph,
+    CapabilityNode,
+    NodeKind,
+    ScanReport,
+    ScanStatus,
+    Severity,
+)
 
 runner = CliRunner()
 
@@ -14,6 +22,7 @@ def test_help_lists_main_commands() -> None:
     assert result.exit_code == 0
     assert "conformance" in result.stdout
     assert "evaluate" in result.stdout
+    assert "diff" in result.stdout
 
 
 def test_suite_requires_explicit_tool_call_authorization() -> None:
@@ -134,3 +143,51 @@ def test_behavior_threshold_requires_baseline_destination(tmp_path: Path) -> Non
     assert result.exit_code == 2
     assert "Behavior thresholds require --baseline" in result.stdout
     assert "--save-baseline" in result.stdout
+
+
+def _write_scan(
+    tmp_path: Path,
+    name: str,
+    *,
+    include_tool: bool,
+) -> Path:
+    nodes = (
+        [
+            CapabilityNode(
+                id="tool:read_status",
+                kind=NodeKind.TOOL,
+                name="read_status",
+                input_schema={"type": "object"},
+            )
+        ]
+        if include_tool
+        else []
+    )
+    report = ScanReport(
+        target=f"https://{name}.example/mcp",
+        status=ScanStatus.PASSED,
+        failure_threshold=Severity.HIGH,
+        graph=CapabilityGraph(target=name, nodes=nodes),
+    )
+    path = tmp_path / f"{name}.json"
+    path.write_text(report.model_dump_json(), encoding="utf-8")
+    return path
+
+
+def test_contract_diff_command_writes_report_and_fails_on_breaking_change(
+    tmp_path: Path,
+) -> None:
+    baseline = _write_scan(tmp_path, "baseline", include_tool=True)
+    candidate = _write_scan(tmp_path, "candidate", include_tool=False)
+    output = tmp_path / "diff.json"
+
+    result = runner.invoke(
+        app,
+        ["diff", str(baseline), str(candidate), "--output", str(output)],
+    )
+
+    assert result.exit_code == 1
+    assert "MendPact contract diff: FAILED" in result.stdout
+    assert json.loads(output.read_text(encoding="utf-8"))["schema_version"] == (
+        "mendpact.contract-diff.v1"
+    )

@@ -22,14 +22,22 @@
 - [x] trace replay without a live model call
 - [x] export live decisions for deterministic replay
 
-## Milestone 0.3 — cross-provider matrix
+## Milestone 0.3 — contract intelligence
+
+- [x] versioned MCP contract diff reports
+- [x] capability addition, removal, and metadata classification
+- [x] deterministic JSON Schema compatibility rules
+- [x] behavior-scenario blast-radius mapping
+- [x] CI thresholds and offline report comparison
+
+## Milestone 0.4 — cross-provider matrix
 
 - Anthropic and Gemini drivers
 - provider and model snapshots
 - semantic grading calibrated against human labels
 - compatibility diff between agent versions and model versions
 
-## Milestone 0.4 — hosted beta
+## Milestone 0.5 — hosted beta
 
 - projects, authentication, and encrypted bring-your-own-key storage
 - scheduled scans and GitHub checks
