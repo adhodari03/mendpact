@@ -17,7 +17,7 @@
 - [x] OpenAI Responses API driver
 - [x] task-to-tool selection scenarios
 - [x] JSON Schema argument grading
-- repetition, baselines, and statistical regression thresholds
+- [x] repetition, versioned baselines, and statistical regression thresholds
 - [x] deterministic repetition and wrong-tool confusion summaries
 - [x] trace replay without a live model call
 - [x] export live decisions for deterministic replay

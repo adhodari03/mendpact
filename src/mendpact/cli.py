@@ -19,17 +19,23 @@ from mendpact.behavior import (
     replay_plan_from_report,
 )
 from mendpact.conformance import run_server_conformance
-from mendpact.domain import ScanStatus, Severity
+from mendpact.domain import BehaviorThresholds, ScanStatus, Severity
 from mendpact.drivers.base import ModelDriver
 from mendpact.drivers.openai import (
     OpenAIDriverConfigurationError,
     OpenAIResponsesDriver,
 )
 from mendpact.drivers.replay import ReplayDriver
+from mendpact.regression import (
+    baseline_from_report,
+    compare_to_baseline,
+    load_behavior_baseline,
+)
 from mendpact.reporting import (
     render_behavior_report,
     render_conformance_report,
     render_report,
+    write_behavior_baseline,
     write_behavior_report,
     write_conformance_report,
     write_json_report,
@@ -69,6 +75,23 @@ def _build_behavior_driver(
     if model is None:
         raise ValueError("--model is required when --driver is openai.")
     return OpenAIResponsesDriver(model=model)
+
+
+def _behavior_thresholds(
+    base: BehaviorThresholds,
+    *,
+    min_pass_rate: float | None,
+    max_pass_rate_drop: float | None,
+    max_failed_trials: int | None,
+) -> BehaviorThresholds:
+    updates: dict[str, float | int] = {}
+    if min_pass_rate is not None:
+        updates["min_pass_rate"] = min_pass_rate
+    if max_pass_rate_drop is not None:
+        updates["max_pass_rate_drop"] = max_pass_rate_drop
+    if max_failed_trials is not None:
+        updates["max_failed_trials"] = max_failed_trials
+    return base.model_copy(update=updates)
 
 
 def _version_callback(value: bool) -> None:
@@ -186,6 +209,35 @@ def evaluate(
             help="Save complete model decisions as deterministic replay input",
         ),
     ] = None,
+    baseline: Annotated[
+        Path | None,
+        typer.Option(
+            "--baseline",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Compare this run with a versioned behavior baseline",
+        ),
+    ] = None,
+    save_baseline: Annotated[
+        Path | None,
+        typer.Option(
+            "--save-baseline",
+            help="Save this complete run as a versioned behavior baseline",
+        ),
+    ] = None,
+    min_pass_rate: Annotated[
+        float | None,
+        typer.Option(min=0.0, max=1.0, help="Minimum acceptable current pass rate"),
+    ] = None,
+    max_pass_rate_drop: Annotated[
+        float | None,
+        typer.Option(min=0.0, max=1.0, help="Maximum pass-rate drop from the baseline"),
+    ] = None,
+    max_failed_trials: Annotated[
+        int | None,
+        typer.Option(min=0, help="Maximum acceptable failed trials"),
+    ] = None,
     allow_private: Annotated[
         bool,
         typer.Option(help="Allow private/loopback targets for deliberate local development"),
@@ -200,6 +252,24 @@ def evaluate(
     try:
         behavior_suite = load_behavior_suite(scenario)
         model_driver = _build_behavior_driver(driver, replay=replay, model=model)
+        saved_baseline = load_behavior_baseline(baseline) if baseline is not None else None
+        if (
+            saved_baseline is None
+            and save_baseline is None
+            and any(
+                value is not None
+                for value in (min_pass_rate, max_pass_rate_drop, max_failed_trials)
+            )
+        ):
+            raise ValueError(
+                "Behavior thresholds require --baseline or --save-baseline."
+            )
+        thresholds = _behavior_thresholds(
+            saved_baseline.thresholds if saved_baseline else BehaviorThresholds(),
+            min_pass_rate=min_pass_rate,
+            max_pass_rate_drop=max_pass_rate_drop,
+            max_failed_trials=max_failed_trials,
+        )
     except (OSError, ValueError, OpenAIDriverConfigurationError) as exc:
         console.print(f"[red]Could not configure behavior evaluation:[/] {exc}")
         raise typer.Exit(code=2) from exc
@@ -217,6 +287,13 @@ def evaluate(
             ),
         )
     )
+
+    if saved_baseline is not None and report.status != ScanStatus.ERROR:
+        try:
+            report = compare_to_baseline(report, saved_baseline, thresholds)
+        except ValueError as exc:
+            console.print(f"[red]Could not compare behavior baseline:[/] {exc}")
+            raise typer.Exit(code=2) from exc
     render_behavior_report(report, console)
 
     if output is not None:
@@ -234,6 +311,17 @@ def evaluate(
             console.print(f"[red]Could not write replay data:[/] {exc}")
             raise typer.Exit(code=2) from exc
         console.print(f"Replay data: {save_replay}")
+
+    if save_baseline is not None:
+        try:
+            write_behavior_baseline(
+                baseline_from_report(report, thresholds),
+                save_baseline,
+            )
+        except (OSError, ValueError) as exc:
+            console.print(f"[red]Could not write behavior baseline:[/] {exc}")
+            raise typer.Exit(code=2) from exc
+        console.print(f"Behavior baseline: {save_baseline}")
 
     if report.status == ScanStatus.ERROR:
         raise typer.Exit(code=2)

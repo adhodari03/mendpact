@@ -67,6 +67,21 @@ def _write_scenario(tmp_path: Path) -> Path:
     return path
 
 
+def _write_replay(tmp_path: Path) -> Path:
+    path = tmp_path / "replay.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "mendpact.replay.v1",
+                "model": "fixture-model",
+                "decisions": [{"scenario_id": "read-status"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 def test_replay_driver_requires_replay_file(tmp_path: Path) -> None:
     scenario = _write_scenario(tmp_path)
 
@@ -96,3 +111,26 @@ def test_openai_driver_requires_explicit_model(tmp_path: Path) -> None:
 
     assert result.exit_code == 2
     assert "--model is required" in result.stdout
+
+
+def test_behavior_threshold_requires_baseline_destination(tmp_path: Path) -> None:
+    scenario = _write_scenario(tmp_path)
+    replay = _write_replay(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "evaluate",
+            "https://example.com/mcp",
+            "--scenario",
+            str(scenario),
+            "--replay",
+            str(replay),
+            "--min-pass-rate",
+            "0.9",
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "Behavior thresholds require --baseline" in result.stdout
+    assert "--save-baseline" in result.stdout
