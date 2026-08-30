@@ -95,3 +95,20 @@ mendpact evaluate http://127.0.0.1:8000/mcp \
 ```
 
 This reproduction makes no model-provider request and incurs no model cost.
+
+## MCP contract-diff validation
+
+Date: August 30, 2026
+
+The provider-free contract-diff implementation was checked with:
+
+- 78 passing tests across the complete project suite;
+- Ruff static analysis and strict MyPy type checking;
+- an offline CLI comparison of the included baseline and candidate scan artifacts;
+- expected exit code `0` at the default `breaking` threshold;
+- expected exit code `1` at the strict `risky` threshold;
+- validation of the emitted `mendpact.contract-diff.v1` JSON report.
+
+The example comparison reports one risky tool-description change, one compatible optional
+argument addition, one compatible server-version change, and one affected behavior scenario.
+No MCP server, model-provider request, API key, or paid operation is needed for this test.

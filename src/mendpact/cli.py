@@ -19,7 +19,13 @@ from mendpact.behavior import (
     replay_plan_from_report,
 )
 from mendpact.conformance import run_server_conformance
-from mendpact.domain import BehaviorThresholds, ScanStatus, Severity
+from mendpact.contract_diff import diff_scan_reports, load_scan_report
+from mendpact.domain import (
+    BehaviorThresholds,
+    ContractImpact,
+    ScanStatus,
+    Severity,
+)
 from mendpact.drivers.base import ModelDriver
 from mendpact.drivers.openai import (
     OpenAIDriverConfigurationError,
@@ -34,10 +40,12 @@ from mendpact.regression import (
 from mendpact.reporting import (
     render_behavior_report,
     render_conformance_report,
+    render_contract_diff_report,
     render_report,
     write_behavior_baseline,
     write_behavior_report,
     write_conformance_report,
+    write_contract_diff_report,
     write_json_report,
     write_replay_plan,
 )
@@ -155,6 +163,78 @@ def scan(
 
     if report.status == ScanStatus.ERROR:
         raise typer.Exit(code=2)
+    if report.status == ScanStatus.FAILED:
+        raise typer.Exit(code=1)
+
+
+@app.command("diff")
+def contract_diff(
+    baseline: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Baseline MendPact scan report",
+        ),
+    ],
+    candidate: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Candidate MendPact scan report",
+        ),
+    ],
+    scenario: Annotated[
+        Path | None,
+        typer.Option(
+            "--scenario",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Optional behavior suite used to calculate blast radius",
+        ),
+    ] = None,
+    fail_on: Annotated[
+        ContractImpact,
+        typer.Option(
+            "--fail-on",
+            case_sensitive=False,
+            help="Minimum compatibility impact that fails CI",
+        ),
+    ] = ContractImpact.BREAKING,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Write the contract diff JSON report"),
+    ] = None,
+) -> None:
+    """Compare two scan artifacts and report MCP contract changes."""
+
+    try:
+        baseline_report = load_scan_report(baseline)
+        candidate_report = load_scan_report(candidate)
+        behavior_suite = load_behavior_suite(scenario) if scenario is not None else None
+        report = diff_scan_reports(
+            baseline_report,
+            candidate_report,
+            suite=behavior_suite,
+            failure_threshold=fail_on,
+        )
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]Could not compare MCP contracts:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    render_contract_diff_report(report, console)
+    if output is not None:
+        try:
+            write_contract_diff_report(report, output)
+        except OSError as exc:
+            console.print(f"[red]Could not write contract diff report:[/] {exc}")
+            raise typer.Exit(code=2) from exc
+        console.print(f"JSON report: {output}")
+
     if report.status == ScanStatus.FAILED:
         raise typer.Exit(code=1)
 

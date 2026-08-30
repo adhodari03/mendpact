@@ -97,6 +97,7 @@ pnpm-debug.log*
 /conformance-report*.json
 /behavior-report*.json
 /behavior-baseline*.json
+/contract-diff*.json
 /replay*.json
 /reports/
 /results/

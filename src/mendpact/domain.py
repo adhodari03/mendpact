@@ -135,6 +135,67 @@ class ScanReport(BaseModel):
     summary: ScanSummary | None = None
 
 
+class ContractImpact(StrEnum):
+    """Compatibility impact assigned to one contract change."""
+
+    COMPATIBLE = "compatible"
+    RISKY = "risky"
+    BREAKING = "breaking"
+
+    @property
+    def rank(self) -> int:
+        return {
+            ContractImpact.COMPATIBLE: 0,
+            ContractImpact.RISKY: 1,
+            ContractImpact.BREAKING: 2,
+        }[self]
+
+
+class ContractChangeKind(StrEnum):
+    ADDED = "added"
+    REMOVED = "removed"
+    MODIFIED = "modified"
+
+
+class ContractChange(BaseModel):
+    """One deterministic difference between two MCP capability graphs."""
+
+    rule_id: str
+    impact: ContractImpact
+    kind: ContractChangeKind
+    subject: str
+    path: str
+    message: str
+    before: Any = None
+    after: Any = None
+    affected_scenarios: list[str] = Field(default_factory=list)
+
+
+class ContractDiffSummary(BaseModel):
+    change_count: int
+    changes_by_impact: dict[str, int]
+    affected_scenario_count: int
+
+
+class ContractDiffReport(BaseModel):
+    """Versioned compatibility report for two scan artifacts."""
+
+    schema_version: Literal["mendpact.contract-diff.v1"] = (
+        "mendpact.contract-diff.v1"
+    )
+    diff_id: str = Field(default_factory=lambda: str(uuid4()))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    baseline_scan_id: str
+    candidate_scan_id: str
+    baseline_target: str
+    candidate_target: str
+    status: ScanStatus
+    failure_threshold: ContractImpact
+    changes: list[ContractChange] = Field(default_factory=list)
+    summary: ContractDiffSummary
+    errors: list[str] = Field(default_factory=list)
+
+
 class SpecReference(BaseModel):
     id: str
     url: str | None = None

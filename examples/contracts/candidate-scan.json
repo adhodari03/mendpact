@@ -1,0 +1,73 @@
+{
+  "schema_version": "mendpact.scan.v1",
+  "scan_id": "fixture-contract-candidate-v1",
+  "generated_at": "2026-08-30T00:05:00Z",
+  "target": "https://api.example/mcp",
+  "status": "passed",
+  "failure_threshold": "high",
+  "graph": {
+    "target": "https://api.example/mcp",
+    "protocol": "mcp",
+    "protocol_version": "2025-06-18",
+    "server_name": "fixture-contract-server",
+    "server_version": "1.1.0",
+    "instructions": "Use read-only tools for status checks.",
+    "nodes": [
+      {
+        "id": "server:https://api.example/mcp",
+        "kind": "server",
+        "name": "fixture-contract-server",
+        "metadata": {
+          "version": "1.1.0"
+        }
+      },
+      {
+        "id": "tool:read_status",
+        "kind": "tool",
+        "name": "read_status",
+        "description": "Read current or historical status details for one component.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "component": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "required": [
+            "component"
+          ],
+          "additionalProperties": false
+        },
+        "metadata": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "server:https://api.example/mcp",
+        "target": "tool:read_status",
+        "relationship": "exposes"
+      }
+    ],
+    "warnings": []
+  },
+  "findings": [],
+  "errors": [],
+  "summary": {
+    "node_count": 2,
+    "tool_count": 1,
+    "resource_count": 0,
+    "prompt_count": 0,
+    "finding_count": 0,
+    "findings_by_severity": {
+      "info": 0,
+      "low": 0,
+      "medium": 0,
+      "high": 0,
+      "critical": 0
+    }
+  }
+}

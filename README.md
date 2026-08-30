@@ -135,6 +135,29 @@ a one-sided proportion-test p-value as supporting statistical context; predictab
 remain the source of the CI exit code. See the included
 [`read-status` baseline](examples/baselines/read-status.json) for the JSON format.
 
+## MCP contract diff
+
+MendPact can compare two versioned scan reports without reconnecting to either MCP server. It
+classifies capability and JSON Schema changes as `compatible`, `risky`, or `breaking`, then maps
+changed tools to behavior scenarios that may need retesting.
+
+```bash
+mendpact diff \
+  examples/contracts/baseline-scan.json \
+  examples/contracts/candidate-scan.json \
+  --scenario examples/scenarios/read-status.json \
+  --fail-on risky \
+  --output contract-diff.json
+```
+
+The default CI threshold is `breaking`. Use `--fail-on risky` when description changes, newly
+added tools, relaxed schemas, or other model-routing risks should also block a change. Reports
+include stable rule IDs, before-and-after evidence, JSON Pointer paths, and affected scenario
+IDs. The example intentionally exits with code `1` under the strict `risky` threshold because
+the tool description changed. The command is deterministic and makes no model-provider or MCP
+network request. See the [contract-diff rule reference](docs/CONTRACT_DIFF.md) for the complete
+classification policy.
+
 ## MCP conformance
 
 MendPact also wraps the official MCP server conformance framework, pinned to version `0.1.16`.
