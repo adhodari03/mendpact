@@ -7,7 +7,12 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from mendpact.argument_matching import (
+    ArgumentNormalizer,
+    normalization_configuration_errors,
+)
 
 
 class NodeKind(StrEnum):
@@ -187,7 +192,20 @@ class BehaviorExpectation(BaseModel):
     tool: str
     arguments: dict[str, Any] = Field(default_factory=dict)
     argument_match: ArgumentMatch = ArgumentMatch.SUBSET
+    argument_normalization: dict[str, list[ArgumentNormalizer]] = Field(
+        default_factory=dict
+    )
     forbidden_tools: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_argument_normalization(self) -> BehaviorExpectation:
+        errors = normalization_configuration_errors(
+            self.arguments,
+            self.argument_normalization,
+        )
+        if errors:
+            raise ValueError(" ".join(errors))
+        return self
 
 
 class BehaviorScenario(BaseModel):

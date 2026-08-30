@@ -1,0 +1,14 @@
+{
+  "schema_version": "mendpact.replay.v1",
+  "model": "gpt-5.6-luna",
+  "decisions": [
+    {
+      "scenario_id": "read-api-status",
+      "attempt": 1,
+      "selected_tool": "read_status",
+      "arguments": {
+        "component": "API"
+      }
+    }
+  ]
+}

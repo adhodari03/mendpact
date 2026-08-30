@@ -7,6 +7,7 @@ from typing import Any
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 from jsonschema.exceptions import SchemaError, ValidationError  # type: ignore[import-untyped]
 
+from mendpact.argument_matching import normalize_argument_documents
 from mendpact.domain import (
     ArgumentMatch,
     BehaviorGrade,
@@ -85,11 +86,21 @@ def grade_tool_call(
         if schema_reason is not None:
             reasons.append(schema_reason)
 
-    expected = scenario.expectation.arguments
+    actual, expected, normalization_errors = normalize_argument_documents(
+        trace.arguments,
+        scenario.expectation.arguments,
+        scenario.expectation.argument_normalization,
+    )
     if scenario.expectation.argument_match == ArgumentMatch.EXACT:
-        expected_arguments_match = trace.arguments == expected
+        expected_arguments_match = actual == expected
     else:
-        expected_arguments_match = _contains_expected(trace.arguments, expected)
+        expected_arguments_match = _contains_expected(actual, expected)
+    if normalization_errors:
+        expected_arguments_match = False
+        reasons.extend(
+            f"Could not normalize arguments: {error}"
+            for error in normalization_errors
+        )
     if not expected_arguments_match:
         reasons.append(
             f"Arguments do not {scenario.expectation.argument_match.value}-match the expectation."

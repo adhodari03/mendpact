@@ -62,6 +62,17 @@ edges. The provider-neutral trace format supports OpenAI now and additional mode
 A full report records the selected tool, arguments, resolved model, response ID,
 latency, and token counts without storing the API key or raw provider response.
 
+String comparison remains case-sensitive, and normalization is disabled by default. A scenario
+can explicitly normalize only string fields whose server contract treats formatting or letter
+case as equivalent. Exact versus subset comparison remains controlled by `argument_match`.
+Paths use JSON Pointer syntax, and raw model arguments remain unchanged in reports:
+
+```json
+"argument_normalization": {
+  "/component": ["trim", "casefold"]
+}
+```
+
 ### Live OpenAI evaluation
 
 Install the optional SDK and set the API key in your environment:
@@ -188,6 +199,8 @@ The normalized conformance JSON is uploaded as a workflow artifact.
 See [the architecture](docs/ARCHITECTURE.md), [security boundary](docs/SECURITY.md), and
 [roadmap](docs/ROADMAP.md) for the technical direction. The [cost guide](docs/COSTS.md) explains
 how to keep routine evaluation free and reserve small paid runs for provider validation.
+Completed integration checks and their limitations are recorded in the
+[validation report](docs/VALIDATION.md).
 
 ## License
 
