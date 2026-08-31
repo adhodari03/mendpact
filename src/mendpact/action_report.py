@@ -312,6 +312,36 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
     ]
     annotations: list[Annotation] = []
 
+    policy = payload.get("policy")
+    if isinstance(policy, dict):
+        lines.extend(
+            [
+                "### Applied policy",
+                "",
+                *_table(
+                    [
+                        "Name",
+                        "Profile",
+                        "Scan fails on",
+                        "Contract fails on",
+                        "Private targets",
+                        "Insecure HTTP",
+                    ],
+                    [
+                        [
+                            policy.get("name"),
+                            policy.get("profile"),
+                            policy.get("scan_fail_on"),
+                            policy.get("contract_fail_on"),
+                            "allowed" if policy.get("allow_private") else "blocked",
+                            "allowed" if policy.get("allow_insecure_http") else "blocked",
+                        ]
+                    ],
+                ),
+                "",
+            ]
+        )
+
     if schema == "mendpact.guard.v1":
         section_lines, annotations = _guard_sections(payload)
         lines.extend(section_lines)

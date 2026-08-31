@@ -1,0 +1,9 @@
+schema_version = "mendpact.policy.v1"
+name = "local-strict-fixture"
+profile = "local"
+
+# Test-only policy: strict findings, with loopback HTTP allowed for the fixture.
+scan_fail_on = "high"
+contract_fail_on = "risky"
+allow_private = true
+allow_insecure_http = true

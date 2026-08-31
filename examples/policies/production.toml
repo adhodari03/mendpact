@@ -1,0 +1,9 @@
+schema_version = "mendpact.policy.v1"
+name = "production"
+profile = "production"
+
+# These values are the production defaults and are repeated for review clarity.
+scan_fail_on = "high"
+contract_fail_on = "risky"
+allow_private = false
+allow_insecure_http = false

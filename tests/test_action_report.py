@@ -15,6 +15,16 @@ def _scan_payload() -> dict[str, object]:
         "schema_version": "mendpact.scan.v1",
         "status": "failed",
         "target": "https://user:secret@example.com/mcp?token=hidden#fragment",
+        "policy": {
+            "schema_version": "mendpact.policy.v1",
+            "source_sha256": "0" * 64,
+            "name": "production",
+            "profile": "production",
+            "scan_fail_on": "high",
+            "contract_fail_on": "risky",
+            "allow_private": False,
+            "allow_insecure_http": False,
+        },
         "summary": {
             "tool_count": 2,
             "resource_count": 1,
@@ -42,6 +52,9 @@ def test_renders_scan_summary_without_leaking_target_secrets() -> None:
     assert "token=hidden" not in rendered.summary
     assert "tool:delete&#124;project" in rendered.summary
     assert "Delete &lt;everything&gt;<br>after approval." in rendered.summary
+    assert "### Applied policy" in rendered.summary
+    assert "production" in rendered.summary
+    assert "blocked" in rendered.summary
     assert rendered.annotations[0].level == "error"
     assert rendered.annotations[1].level == "warning"
 

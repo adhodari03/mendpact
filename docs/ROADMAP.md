@@ -40,14 +40,22 @@
 - [x] report and candidate-scan Action outputs
 - [x] PR-native GitHub job summaries and bounded annotations
 
-## Milestone 0.5 — cross-provider matrix
+## Milestone 0.5 — production adoption
+
+- [x] versioned policy-as-code with production and local profiles
+- [x] strict-policy negative CI test
+- controlled, expiring waivers
+- one-command project initialization
+- authenticated production targets and OAuth metadata checks
+
+## Milestone 0.6 — cross-provider matrix
 
 - Anthropic and Gemini drivers
 - provider and model snapshots
 - semantic grading calibrated against human labels
 - compatibility diff between agent versions and model versions
 
-## Milestone 0.6 — hosted beta
+## Milestone 0.7 — hosted beta
 
 - projects, authentication, and encrypted bring-your-own-key storage
 - scheduled scans and GitHub checks

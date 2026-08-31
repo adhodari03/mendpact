@@ -51,6 +51,13 @@ class ScanStatus(StrEnum):
     ERROR = "error"
 
 
+class PolicyProfile(StrEnum):
+    """Security posture selected by a versioned MendPact policy."""
+
+    PRODUCTION = "production"
+    LOCAL = "local"
+
+
 class RegressionImpact(StrEnum):
     """How a baseline comparison finding affects the evaluation result."""
 
@@ -129,6 +136,7 @@ class ScanReport(BaseModel):
     target: str
     status: ScanStatus
     failure_threshold: Severity
+    policy: PolicySnapshot | None = None
     graph: CapabilityGraph | None = None
     findings: list[Finding] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
@@ -149,6 +157,19 @@ class ContractImpact(StrEnum):
             ContractImpact.RISKY: 1,
             ContractImpact.BREAKING: 2,
         }[self]
+
+
+class PolicySnapshot(BaseModel):
+    """Resolved policy evidence embedded in scan and guard reports."""
+
+    schema_version: Literal["mendpact.policy.v1"] = "mendpact.policy.v1"
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    name: str
+    profile: PolicyProfile
+    scan_fail_on: Severity
+    contract_fail_on: ContractImpact
+    allow_private: bool = False
+    allow_insecure_http: bool = False
 
 
 class ContractChangeKind(StrEnum):
@@ -468,6 +489,7 @@ class GuardReport(BaseModel):
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     target: str
     status: ScanStatus
+    policy: PolicySnapshot | None = None
     scan: ScanReport
     contract_diff: ContractDiffReport | None = None
     behavior: BehaviorReport | None = None

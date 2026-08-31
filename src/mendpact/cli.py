@@ -33,6 +33,7 @@ from mendpact.drivers.openai import (
 )
 from mendpact.drivers.replay import ReplayDriver
 from mendpact.guard import guard_mcp_url
+from mendpact.policy import PolicyConfigurationError, load_policy, target_policy
 from mendpact.regression import (
     baseline_from_report,
     compare_to_baseline,
@@ -111,6 +112,22 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
+def _reject_policy_overrides(ctx: typer.Context, option_names: tuple[str, ...]) -> None:
+    explicit = [
+        f"--{name.replace('_', '-')}"
+        for name in option_names
+        if (
+            (source := ctx.get_parameter_source(name)) is not None
+            and source.name == "COMMANDLINE"
+        )
+    ]
+    if explicit:
+        raise ValueError(
+            "--policy cannot be combined with policy-controlled options: "
+            + ", ".join(explicit)
+        )
+
+
 @app.callback()
 def main(
     version: Annotated[
@@ -123,6 +140,7 @@ def main(
 
 @app.command()
 def scan(
+    ctx: typer.Context,
     target: Annotated[str, typer.Argument(help="Remote Streamable HTTP MCP endpoint")],
     output: Annotated[
         Path | None,
@@ -140,18 +158,47 @@ def scan(
         bool,
         typer.Option(help="Allow plaintext HTTP for deliberate local development"),
     ] = False,
+    policy_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--policy",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Versioned TOML policy that owns thresholds and target allowances",
+        ),
+    ] = None,
 ) -> None:
     """Discover and deterministically inspect a remote MCP endpoint."""
+
+    try:
+        applied_policy = load_policy(policy_file) if policy_file is not None else None
+        if applied_policy is not None:
+            _reject_policy_overrides(
+                ctx,
+                ("fail_on", "allow_private", "allow_insecure_http"),
+            )
+    except (PolicyConfigurationError, ValueError) as exc:
+        console.print(f"[red]Could not configure scan policy:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    failure_threshold = applied_policy.scan_fail_on if applied_policy else fail_on
+    network_policy = (
+        target_policy(applied_policy)
+        if applied_policy
+        else TargetPolicy(
+            allow_private=allow_private,
+            allow_insecure_http=allow_insecure_http,
+        )
+    )
 
     report = anyio.run(
         partial(
             scan_mcp_url,
             target,
-            failure_threshold=fail_on,
-            policy=TargetPolicy(
-                allow_private=allow_private,
-                allow_insecure_http=allow_insecure_http,
-            ),
+            failure_threshold=failure_threshold,
+            policy=network_policy,
+            applied_policy=applied_policy,
         )
     )
     render_report(report, console)
@@ -244,6 +291,7 @@ def contract_diff(
 
 @app.command()
 def guard(
+    ctx: typer.Context,
     target: Annotated[str, typer.Argument(help="Remote Streamable HTTP MCP endpoint")],
     baseline: Annotated[
         Path,
@@ -311,10 +359,31 @@ def guard(
         bool,
         typer.Option(help="Allow plaintext HTTP for deliberate local development"),
     ] = False,
+    policy_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--policy",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Versioned TOML policy that owns thresholds and target allowances",
+        ),
+    ] = None,
 ) -> None:
     """Run scan, contract diff, and affected deterministic replays in one CI command."""
 
     try:
+        applied_policy = load_policy(policy_file) if policy_file is not None else None
+        if applied_policy is not None:
+            _reject_policy_overrides(
+                ctx,
+                (
+                    "scan_fail_on",
+                    "contract_fail_on",
+                    "allow_private",
+                    "allow_insecure_http",
+                ),
+            )
         if (scenario is None) != (replay is None):
             raise ValueError("--scenario and --replay must be supplied together.")
         input_paths = {
@@ -337,9 +406,22 @@ def guard(
         baseline_report = load_scan_report(baseline)
         behavior_suite = load_behavior_suite(scenario) if scenario is not None else None
         replay_plan = load_replay_plan(replay) if replay is not None else None
-    except (OSError, ValueError) as exc:
+    except (OSError, PolicyConfigurationError, ValueError) as exc:
         console.print(f"[red]Could not configure guard:[/] {exc}")
         raise typer.Exit(code=2) from exc
+
+    effective_scan_fail_on = applied_policy.scan_fail_on if applied_policy else scan_fail_on
+    effective_contract_fail_on = (
+        applied_policy.contract_fail_on if applied_policy else contract_fail_on
+    )
+    network_policy = (
+        target_policy(applied_policy)
+        if applied_policy
+        else TargetPolicy(
+            allow_private=allow_private,
+            allow_insecure_http=allow_insecure_http,
+        )
+    )
 
     report = anyio.run(
         partial(
@@ -349,12 +431,10 @@ def guard(
             suite=behavior_suite,
             replay=replay_plan,
             repetitions=repetitions,
-            scan_failure_threshold=scan_fail_on,
-            contract_failure_threshold=contract_fail_on,
-            policy=TargetPolicy(
-                allow_private=allow_private,
-                allow_insecure_http=allow_insecure_http,
-            ),
+            scan_failure_threshold=effective_scan_fail_on,
+            contract_failure_threshold=effective_contract_fail_on,
+            policy=network_policy,
+            applied_policy=applied_policy,
         )
     )
     render_guard_report(report, console)

@@ -67,9 +67,7 @@ jobs:
           baseline: examples/guard/baseline-scan.json
           scenario: examples/scenarios/read-status.json
           replay: examples/replays/read-status.json
-          scan-fail-on: critical
-          allow-private: "true"
-          allow-insecure-http: "true"
+          policy: examples/policies/local-smoke.toml
           output: guard-report.json
       - name: Verify MendPact Action outputs
         shell: bash
@@ -79,6 +77,40 @@ jobs:
         run: |
           test "${MENDPACT_REPORT}" = "guard-report.json"
           test "${MENDPACT_MODE}" = "guard"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("guard-report.json").read_text(encoding="utf-8"))
+          assert report["policy"]["name"] == "local-smoke-fixture"
+          assert report["policy"]["profile"] == "local"
+          PY
+      - name: Verify strict policy blocks risky fixture
+        shell: bash
+        run: |
+          set +e
+          mendpact guard http://127.0.0.1:8000/mcp \
+            --baseline examples/guard/baseline-scan.json \
+            --scenario examples/scenarios/read-status.json \
+            --replay examples/replays/read-status.json \
+            --policy examples/policies/local-strict.toml \
+            --output strict-policy-report.json
+          exit_code=$?
+          set -e
+
+          test "${exit_code}" -eq 1
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("strict-policy-report.json").read_text(encoding="utf-8"))
+          assert report["status"] == "failed"
+          assert report["policy"]["scan_fail_on"] == "high"
+          assert report["policy"]["contract_fail_on"] == "risky"
+          assert report["summary"]["scan_status"] == "failed"
+          assert report["summary"]["contract_status"] == "failed"
+          assert report["summary"]["behavior_status"] == "passed"
+          PY
       - name: MCP conformance smoke test
         run: >-
           mendpact conformance
@@ -106,4 +138,11 @@ jobs:
         with:
           name: mendpact-guard-report
           path: guard-report.json
+          if-no-files-found: ignore
+      - name: Upload strict policy report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-strict-policy-report
+          path: strict-policy-report.json
           if-no-files-found: ignore

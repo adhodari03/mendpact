@@ -13,6 +13,10 @@ inputs:
   target:
     description: Remote Streamable HTTP MCP endpoint.
     required: true
+  policy:
+    description: Versioned TOML policy that owns thresholds and target allowances.
+    required: false
+    default: ""
   fail-on:
     description: Minimum finding severity that fails scan mode.
     required: false
@@ -101,6 +105,7 @@ runs:
       env:
         MENDPACT_MODE: ${{ inputs.mode }}
         MENDPACT_TARGET: ${{ inputs.target }}
+        MENDPACT_POLICY: ${{ inputs.policy }}
         MENDPACT_FAIL_ON: ${{ inputs.fail-on }}
         MENDPACT_BASELINE: ${{ inputs.baseline }}
         MENDPACT_SCENARIO: ${{ inputs.scenario }}

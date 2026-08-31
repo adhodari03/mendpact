@@ -17,6 +17,10 @@ machine-readable source of truth.
 The immutable `v0.1.0` tag predates PR-native summaries. Use `v0.2.0` or a later release for this
 feedback.
 
+Policy-as-code support is introduced in `v0.3.0`. When `policy` is configured, the reviewed TOML
+file owns scan and contract thresholds plus target-network allowances. See the
+[policy reference](POLICY.md).
+
 ## Scan mode
 
 ```yaml
