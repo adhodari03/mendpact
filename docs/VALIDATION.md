@@ -136,6 +136,25 @@ unknown modes, and invalid boolean values. Bash syntax validation, strict MyPy, 
 metadata parsing also passed.
 
 The same Action runner script used by `action.yml` completed a real local guard run against the
-fixture and emitted a passing `mendpact.guard.v1` report. The repository CI now invokes the
-composite Action through `uses: ./`; that hosted-run result must pass on the pull request before
-merge. No Marketplace listing or `v0.1.0` release tag has been published yet.
+fixture and emitted a passing `mendpact.guard.v1` report. The repository CI invokes the composite
+Action through `uses: ./`, and that hosted run passed before merge.
+
+The immutable `v0.1.0` GitHub release was published and then exercised through
+`adhodari03/mendpact@v0.1.0` by the dedicated release-smoke workflow on August 31, 2026. The
+published Action completed guard mode successfully and produced the expected JSON artifact. This
+validated the public release reference without contacting a model provider or executing an MCP
+tool.
+
+## PR-native GitHub feedback validation
+
+Date: August 31, 2026
+
+The `v0.2.0` implementation renders scan and guard JSON into GitHub job summaries and bounded
+annotations. Untrusted report values and workflow-command characters are escaped, target URL
+credentials and query parameters are omitted, and presentation failures cannot change the
+underlying MendPact result.
+
+The implementation passed 95 project tests, Ruff, strict MyPy, YAML parsing, and a provider-free
+local guard run through the Action shell path. That run passed its scan, contract, and affected
+behavior stages, then rendered the stage table, one risky contract change, affected scenario,
+and deterministic scan findings into the expected summary.

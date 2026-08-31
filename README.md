@@ -187,7 +187,7 @@ compatibility, while guard mode runs the complete scan, contract, and affected-r
 
 ```yaml
 - id: mendpact
-  uses: adhodari03/mendpact@v0.1.0
+  uses: adhodari03/mendpact@v0.2.0
   with:
     mode: guard
     target: https://your-server.example/mcp
@@ -197,10 +197,11 @@ compatibility, while guard mode runs the complete scan, contract, and affected-r
     output: mendpact-guard-report.json
 ```
 
-The `v0.1.0` reference becomes available when the first alpha Action release is published. Until
-then, test with `main` or pin an exact full commit SHA. The Action exposes the report and
-candidate-scan paths as outputs so the consuming workflow controls artifact upload and
-retention. See the [GitHub Action guide](docs/GITHUB_ACTION.md) for complete scan and guard
+The `v0.2.0` Action writes a Markdown job summary and bounded workflow annotations while keeping
+the JSON report as its complete machine-readable output. It also exposes the report and
+candidate-scan paths so the consuming workflow controls artifact upload and retention. Pin an
+exact full commit SHA when an immutable reference with stronger supply-chain guarantees is
+required. See the [GitHub Action guide](docs/GITHUB_ACTION.md) for complete scan and guard
 workflows.
 
 ## MCP conformance

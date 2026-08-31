@@ -12,8 +12,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
@@ -88,21 +88,21 @@ jobs:
           --output conformance-report.json
       - name: Upload conformance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mendpact-conformance-report
           path: conformance-report.json
           if-no-files-found: ignore
       - name: Upload contract diff report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mendpact-contract-diff-report
           path: contract-diff-report.json
           if-no-files-found: ignore
       - name: Upload guard report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mendpact-guard-report
           path: guard-report.json

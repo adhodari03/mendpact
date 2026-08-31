@@ -38,6 +38,7 @@
 - [x] deterministic CI smoke workflow
 - [x] backward-compatible scan and guard GitHub Action modes
 - [x] report and candidate-scan Action outputs
+- [x] PR-native GitHub job summaries and bounded annotations
 
 ## Milestone 0.5 — cross-provider matrix
 
