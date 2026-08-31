@@ -4,6 +4,7 @@ set -euo pipefail
 mode="${MENDPACT_MODE:-scan}"
 target="${MENDPACT_TARGET:-}"
 output="${MENDPACT_OUTPUT:-mendpact-report.json}"
+policy="${MENDPACT_POLICY:-}"
 allow_private="${MENDPACT_ALLOW_PRIVATE:-false}"
 allow_insecure_http="${MENDPACT_ALLOW_INSECURE_HTTP:-false}"
 
@@ -16,12 +17,11 @@ if [[ -z "${output}" ]]; then
   exit 2
 fi
 
-append_boolean_flag() {
+validate_boolean() {
   local value="$1"
   local flag="$2"
   case "${value}" in
-    true) command_args+=("${flag}") ;;
-    false) ;;
+    true|false) ;;
     *)
       echo "MendPact Action: ${flag} must be 'true' or 'false'." >&2
       exit 2
@@ -29,13 +29,31 @@ append_boolean_flag() {
   esac
 }
 
+append_boolean_flag() {
+  local value="$1"
+  local flag="$2"
+  if [[ "${value}" == "true" ]]; then
+    command_args+=("${flag}")
+  fi
+}
+
+validate_boolean "${allow_private}" --allow-private
+validate_boolean "${allow_insecure_http}" --allow-insecure-http
+if [[ -n "${policy}" ]] && \
+   [[ "${allow_private}" == "true" || "${allow_insecure_http}" == "true" ]]; then
+  echo "MendPact Action: policy cannot be combined with target allowance inputs." >&2
+  exit 2
+fi
+
 case "${mode}" in
   scan)
     command_args=(
       mendpact scan "${target}"
-      --fail-on "${MENDPACT_FAIL_ON:-high}"
-      --output "${output}"
     )
+    if [[ -z "${policy}" ]]; then
+      command_args+=(--fail-on "${MENDPACT_FAIL_ON:-high}")
+    fi
+    command_args+=(--output "${output}")
     ;;
   guard)
     baseline="${MENDPACT_BASELINE:-}"
@@ -54,10 +72,14 @@ case "${mode}" in
       mendpact guard "${target}"
       --baseline "${baseline}"
       --repetitions "${MENDPACT_REPETITIONS:-1}"
-      --scan-fail-on "${MENDPACT_SCAN_FAIL_ON:-high}"
-      --contract-fail-on "${MENDPACT_CONTRACT_FAIL_ON:-breaking}"
-      --output "${output}"
     )
+    if [[ -z "${policy}" ]]; then
+      command_args+=(
+        --scan-fail-on "${MENDPACT_SCAN_FAIL_ON:-high}"
+        --contract-fail-on "${MENDPACT_CONTRACT_FAIL_ON:-breaking}"
+      )
+    fi
+    command_args+=(--output "${output}")
     if [[ -n "${scenario}" ]]; then
       command_args+=(--scenario "${scenario}" --replay "${replay}")
     fi
@@ -71,7 +93,11 @@ case "${mode}" in
     ;;
 esac
 
-append_boolean_flag "${allow_private}" --allow-private
-append_boolean_flag "${allow_insecure_http}" --allow-insecure-http
+if [[ -n "${policy}" ]]; then
+  command_args+=(--policy "${policy}")
+else
+  append_boolean_flag "${allow_private}" --allow-private
+  append_boolean_flag "${allow_insecure_http}" --allow-insecure-http
+fi
 
 exec "${command_args[@]}"

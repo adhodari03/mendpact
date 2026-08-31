@@ -58,6 +58,12 @@ def render_report(report: ScanReport, console: Console) -> None:
     }[report.status]
     console.print(f"MendPact scan: [{status_style}]{report.status.value.upper()}[/]")
     console.print(f"Target: {report.target}")
+    if report.policy:
+        console.print(
+            f"Policy: {report.policy.name} ({report.policy.profile.value}) | "
+            f"Scan: {report.policy.scan_fail_on.value} | "
+            f"Contract: {report.policy.contract_fail_on.value}"
+        )
 
     if report.errors:
         for error in report.errors:
@@ -190,6 +196,12 @@ def render_guard_report(report: GuardReport, console: Console) -> None:
     summary = report.summary
     console.print(f"MendPact guard: [{status_style}]{report.status.value.upper()}[/]")
     console.print(f"Target: {report.target}")
+    if report.policy:
+        console.print(
+            f"Policy: {report.policy.name} ({report.policy.profile.value}) | "
+            f"Scan: {report.policy.scan_fail_on.value} | "
+            f"Contract: {report.policy.contract_fail_on.value}"
+        )
     console.print(
         f"Scan: {summary.scan_status.value} | "
         f"Contract: {summary.contract_status.value if summary.contract_status else 'skipped'} | "

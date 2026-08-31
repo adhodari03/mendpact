@@ -1,0 +1,9 @@
+schema_version = "mendpact.policy.v1"
+name = "local-smoke-fixture"
+profile = "local"
+
+# Test-only policy: observe fixture findings without failing the positive Action smoke test.
+scan_fail_on = "critical"
+contract_fail_on = "breaking"
+allow_private = true
+allow_insecure_http = true

@@ -9,6 +9,7 @@ from mendpact.domain import (
     ContractImpact,
     GuardReport,
     GuardSummary,
+    PolicySnapshot,
     ReplayPlan,
     ScanReport,
     ScanStatus,
@@ -75,6 +76,7 @@ async def guard_mcp_url(
     scan_failure_threshold: Severity = Severity.HIGH,
     contract_failure_threshold: ContractImpact = ContractImpact.BREAKING,
     policy: TargetPolicy | None = None,
+    applied_policy: PolicySnapshot | None = None,
 ) -> GuardReport:
     """Scan once, compare the contract, and replay only affected scenarios."""
 
@@ -82,11 +84,13 @@ async def guard_mcp_url(
         target,
         failure_threshold=scan_failure_threshold,
         policy=policy,
+        applied_policy=applied_policy,
     )
     if scan.status == ScanStatus.ERROR or scan.graph is None:
         return GuardReport(
             target=target,
             status=ScanStatus.ERROR,
+            policy=applied_policy,
             scan=scan,
             behavior_skipped_reason="The scan did not produce a capability graph.",
             summary=GuardSummary(scan_status=scan.status),
@@ -104,6 +108,7 @@ async def guard_mcp_url(
         return GuardReport(
             target=target,
             status=ScanStatus.ERROR,
+            policy=applied_policy,
             scan=scan,
             behavior_skipped_reason="Contract comparison could not be completed.",
             summary=GuardSummary(scan_status=scan.status),
@@ -112,6 +117,7 @@ async def guard_mcp_url(
     report = GuardReport(
         target=target,
         status=_overall_status(scan.status, contract_diff.status),
+        policy=applied_policy,
         scan=scan,
         contract_diff=contract_diff,
         summary=GuardSummary(

@@ -132,3 +132,40 @@ def test_action_script_rejects_unknown_mode_and_boolean(tmp_path: Path) -> None:
     assert "mode must be 'scan' or 'guard'" in unknown_mode.stderr
     assert invalid_boolean.returncode == 2
     assert "must be 'true' or 'false'" in invalid_boolean.stderr
+
+
+def test_action_script_lets_policy_own_guard_thresholds(tmp_path: Path) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="guard",
+        MENDPACT_TARGET="https://example.com/mcp",
+        MENDPACT_BASELINE="baseline.json",
+        MENDPACT_POLICY="mendpact.toml",
+        MENDPACT_OUTPUT="guard.json",
+    )
+
+    assert result.returncode == 0
+    assert _arguments(tmp_path) == [
+        "guard",
+        "https://example.com/mcp",
+        "--baseline",
+        "baseline.json",
+        "--repetitions",
+        "1",
+        "--output",
+        "guard.json",
+        "--policy",
+        "mendpact.toml",
+    ]
+
+
+def test_action_script_rejects_policy_with_target_allowances(tmp_path: Path) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_TARGET="https://example.com/mcp",
+        MENDPACT_POLICY="mendpact.toml",
+        MENDPACT_ALLOW_PRIVATE="true",
+    )
+
+    assert result.returncode == 2
+    assert "policy cannot be combined with target allowance inputs" in result.stderr

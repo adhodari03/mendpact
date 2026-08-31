@@ -204,6 +204,22 @@ exact full commit SHA when an immutable reference with stronger supply-chain gua
 required. See the [GitHub Action guide](docs/GITHUB_ACTION.md) for complete scan and guard
 workflows.
 
+## Policy as code
+
+MendPact can load reviewed production or local settings from a versioned TOML policy. Production
+policies fail on `high` scan findings and `risky` contract changes by default, and cannot enable
+private targets or plaintext HTTP.
+
+```bash
+mendpact guard https://api.example/mcp \
+  --baseline mendpact/baseline-scan.json \
+  --policy mendpact.toml \
+  --output mendpact-guard-report.json
+```
+
+The resolved policy is embedded in the report and GitHub job summary. See the
+[policy reference](docs/POLICY.md) for profiles, Action configuration, and exit behavior.
+
 ## MCP conformance
 
 MendPact also wraps the official MCP server conformance framework, pinned to version `0.1.16`.

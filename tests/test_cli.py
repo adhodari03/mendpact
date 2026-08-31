@@ -214,6 +214,36 @@ def test_guard_requires_scenario_and_replay_together(tmp_path: Path) -> None:
     assert "--scenario and --replay must be supplied together" in result.stdout
 
 
+def test_policy_cannot_be_weakened_by_scan_cli_options(tmp_path: Path) -> None:
+    policy = tmp_path / "mendpact.toml"
+    policy.write_text(
+        '\n'.join(
+            [
+                'schema_version = "mendpact.policy.v1"',
+                'name = "production"',
+                'profile = "production"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "scan",
+            "https://example.com/mcp",
+            "--policy",
+            str(policy),
+            "--fail-on",
+            "critical",
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "--policy cannot be combined" in result.stdout
+    assert "--fail-on" in result.stdout
+
+
 def test_guard_does_not_overwrite_baseline(tmp_path: Path) -> None:
     baseline = _write_scan(tmp_path, "baseline", include_tool=True)
 
