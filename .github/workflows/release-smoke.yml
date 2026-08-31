@@ -1,10 +1,10 @@
-name: MendPact v0.1.0 release smoke
+name: MendPact v0.2.0 release smoke
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - test/release-v0.1.0
+      - test/release-v0.2.0
     paths:
       - .github/workflows/release-smoke.yml
 
@@ -48,7 +48,7 @@ jobs:
 
       - name: Run published MendPact Action
         id: mendpact
-        uses: adhodari03/mendpact@v0.1.0
+        uses: adhodari03/mendpact@v0.2.0
         with:
           mode: guard
           target: http://127.0.0.1:8000/mcp
@@ -84,7 +84,7 @@ jobs:
           assert report["summary"]["affected_scenario_count"] == 1
           assert report["summary"]["evaluated_scenario_count"] == 1
 
-          print("Published MendPact v0.1.0 Action verified successfully.")
+          print("Published MendPact v0.2.0 Action verified successfully.")
           PY
 
       - name: Upload release smoke report
