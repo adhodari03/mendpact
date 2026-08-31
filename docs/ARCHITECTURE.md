@@ -54,6 +54,11 @@ to contract comparison, selects affected scenarios, and evaluates deterministic 
 that same in-memory graph. The versioned guard report embeds each stage's evidence instead of
 reducing the result to an opaque score.
 
+The root composite GitHub Action is a thin distribution adapter. It validates Action inputs,
+constructs quoted CLI arguments without shell evaluation, installs the referenced repository
+revision, and exposes generated artifact paths to the consuming workflow. Scan remains the
+default mode so existing Action configurations continue to work.
+
 The separate `mendpact conformance` path invokes the pinned official MCP conformance CLI as a
 child process. It validates the target first, runs the upstream package without a shell, reads
 the emitted `checks.json` files from an ephemeral directory, and normalizes them into the

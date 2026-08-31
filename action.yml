@@ -1,31 +1,116 @@
-name: MendPact MCP Scan
-description: Scan a remote MCP endpoint for deterministic reliability and safety findings.
+name: MendPact MCP Reliability
+description: Scan an MCP endpoint or guard it against contract and behavior regressions.
 author: MendPact
 branding:
   icon: shield
   color: blue
+
 inputs:
+  mode:
+    description: Run `scan` or the unified `guard` workflow.
+    required: false
+    default: scan
   target:
-    description: Remote Streamable HTTP MCP endpoint
+    description: Remote Streamable HTTP MCP endpoint.
     required: true
   fail-on:
-    description: Minimum finding severity that fails the workflow
+    description: Minimum finding severity that fails scan mode.
     required: false
     default: high
+  baseline:
+    description: Committed scan artifact required by guard mode.
+    required: false
+    default: ""
+  scenario:
+    description: Optional behavior suite for guard blast-radius analysis.
+    required: false
+    default: ""
+  replay:
+    description: Replay plan paired with the guard behavior suite.
+    required: false
+    default: ""
+  repetitions:
+    description: Replay decisions per affected scenario in guard mode.
+    required: false
+    default: "1"
+  scan-fail-on:
+    description: Minimum deterministic severity that fails guard mode.
+    required: false
+    default: high
+  contract-fail-on:
+    description: Minimum contract impact that fails guard mode.
+    required: false
+    default: breaking
+  allow-private:
+    description: Allow private or loopback targets for deliberate test environments.
+    required: false
+    default: "false"
+  allow-insecure-http:
+    description: Allow plaintext HTTP for deliberate test environments.
+    required: false
+    default: "false"
   output:
-    description: JSON report path
+    description: JSON report path, relative to the workflow workspace.
     required: false
     default: mendpact-report.json
+  save-scan:
+    description: Optional candidate scan path written by guard mode.
+    required: false
+    default: ""
+
+outputs:
+  report:
+    description: Path to the generated scan or guard JSON report.
+    value: ${{ steps.metadata.outputs.report }}
+  candidate-scan:
+    description: Candidate scan path when `save-scan` is configured.
+    value: ${{ steps.metadata.outputs.candidate-scan }}
+  mode:
+    description: MendPact mode executed by the action.
+    value: ${{ steps.metadata.outputs.mode }}
+
 runs:
   using: composite
   steps:
+    - name: Prepare MendPact outputs
+      id: metadata
+      shell: bash
+      env:
+        MENDPACT_MODE: ${{ inputs.mode }}
+        MENDPACT_OUTPUT: ${{ inputs.output }}
+        MENDPACT_SAVE_SCAN: ${{ inputs.save-scan }}
+      run: |
+        case "${MENDPACT_MODE}${MENDPACT_OUTPUT}${MENDPACT_SAVE_SCAN}" in
+          *$'\n'*|*$'\r'*)
+            echo "MendPact Action: output metadata cannot contain newlines." >&2
+            exit 2
+            ;;
+        esac
+        echo "mode=${MENDPACT_MODE}" >> "${GITHUB_OUTPUT}"
+        echo "report=${MENDPACT_OUTPUT}" >> "${GITHUB_OUTPUT}"
+        echo "candidate-scan=${MENDPACT_SAVE_SCAN}" >> "${GITHUB_OUTPUT}"
+
     - name: Install MendPact
       shell: bash
-      run: python -m pip install "${{ github.action_path }}"
-    - name: Scan MCP endpoint
+      env:
+        MENDPACT_ACTION_PATH: ${{ github.action_path }}
+      run: python -m pip install "${MENDPACT_ACTION_PATH}"
+
+    - name: Run MendPact
       shell: bash
-      run: >-
-        mendpact scan
-        "${{ inputs.target }}"
-        --fail-on "${{ inputs.fail-on }}"
-        --output "${{ inputs.output }}"
+      env:
+        MENDPACT_MODE: ${{ inputs.mode }}
+        MENDPACT_TARGET: ${{ inputs.target }}
+        MENDPACT_FAIL_ON: ${{ inputs.fail-on }}
+        MENDPACT_BASELINE: ${{ inputs.baseline }}
+        MENDPACT_SCENARIO: ${{ inputs.scenario }}
+        MENDPACT_REPLAY: ${{ inputs.replay }}
+        MENDPACT_REPETITIONS: ${{ inputs.repetitions }}
+        MENDPACT_SCAN_FAIL_ON: ${{ inputs.scan-fail-on }}
+        MENDPACT_CONTRACT_FAIL_ON: ${{ inputs.contract-fail-on }}
+        MENDPACT_ALLOW_PRIVATE: ${{ inputs.allow-private }}
+        MENDPACT_ALLOW_INSECURE_HTTP: ${{ inputs.allow-insecure-http }}
+        MENDPACT_OUTPUT: ${{ inputs.output }}
+        MENDPACT_SAVE_SCAN: ${{ inputs.save-scan }}
+        MENDPACT_ACTION_PATH: ${{ github.action_path }}
+      run: bash "${MENDPACT_ACTION_PATH}/scripts/run-action.sh"

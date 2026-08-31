@@ -36,6 +36,8 @@
 - [x] affected-scenario replay selection
 - [x] versioned composite guard report
 - [x] deterministic CI smoke workflow
+- [x] backward-compatible scan and guard GitHub Action modes
+- [x] report and candidate-scan Action outputs
 
 ## Milestone 0.5 — cross-provider matrix
 

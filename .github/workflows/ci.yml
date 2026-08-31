@@ -58,17 +58,27 @@ jobs:
           --allow-private
           --allow-insecure-http
           --output behavior-report.json
-      - name: Unified MCP guard smoke test
-        run: >-
-          mendpact guard
-          http://127.0.0.1:8000/mcp
-          --baseline examples/guard/baseline-scan.json
-          --scenario examples/scenarios/read-status.json
-          --replay examples/replays/read-status.json
-          --scan-fail-on critical
-          --allow-private
-          --allow-insecure-http
-          --output guard-report.json
+      - name: Unified MCP guard Action smoke test
+        id: mendpact-guard
+        uses: ./
+        with:
+          mode: guard
+          target: http://127.0.0.1:8000/mcp
+          baseline: examples/guard/baseline-scan.json
+          scenario: examples/scenarios/read-status.json
+          replay: examples/replays/read-status.json
+          scan-fail-on: critical
+          allow-private: "true"
+          allow-insecure-http: "true"
+          output: guard-report.json
+      - name: Verify MendPact Action outputs
+        shell: bash
+        env:
+          MENDPACT_REPORT: ${{ steps.mendpact-guard.outputs.report }}
+          MENDPACT_MODE: ${{ steps.mendpact-guard.outputs.mode }}
+        run: |
+          test "${MENDPACT_REPORT}" = "guard-report.json"
+          test "${MENDPACT_MODE}" = "guard"
       - name: MCP conformance smoke test
         run: >-
           mendpact conformance
