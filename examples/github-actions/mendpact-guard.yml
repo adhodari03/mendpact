@@ -1,5 +1,4 @@
 # Copy this file into .github/workflows/ in the consuming repository.
-# Create the v0.1.0 tag before using the release reference below.
 name: MCP contract guard
 
 on:
@@ -12,12 +11,12 @@ jobs:
   mendpact:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - id: mendpact
-        uses: adhodari03/mendpact@v0.1.0
+        uses: adhodari03/mendpact@v0.2.0
         with:
           mode: guard
           target: https://your-server.example/mcp
@@ -26,7 +25,7 @@ jobs:
           replay: mendpact/replay.json
           output: mendpact-guard-report.json
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mendpact-guard-report
           path: mendpact-guard-report.json

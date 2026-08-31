@@ -4,9 +4,18 @@ MendPact is packaged as a composite GitHub Action in the repository root. Existi
 remain on `mode: scan` by default. Guard users select `mode: guard` and provide a committed scan
 baseline, plus an optional scenario/replay pair.
 
-The Action installs the MendPact version contained in the referenced Git revision. The initial
-alpha reference will be `v0.1.0`. GitHub recommends pinning third-party actions to a full commit
-SHA when an immutable reference is required. Use `main` only for deliberate pre-release testing.
+The Action installs the MendPact version contained in the referenced Git revision. The first
+alpha reference was `v0.1.0`; PR-native feedback is introduced in `v0.2.0`. GitHub recommends
+pinning third-party actions to a full commit SHA when an immutable reference is required. Use
+`main` only for deliberate pre-release testing.
+
+Every scan and guard run writes a Markdown result to the GitHub job summary and emits bounded
+workflow annotations for findings, contract changes, and report errors. These presentation steps
+do not change MendPact's configured pass/fail thresholds. The JSON report remains the complete,
+machine-readable source of truth.
+
+The immutable `v0.1.0` tag predates PR-native summaries. Use `v0.2.0` or a later release for this
+feedback.
 
 ## Scan mode
 
@@ -23,18 +32,18 @@ jobs:
   mendpact:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - id: mendpact
-        uses: adhodari03/mendpact@v0.1.0
+        uses: adhodari03/mendpact@v0.2.0
         with:
           target: https://your-server.example/mcp
           fail-on: high
           output: mendpact-report.json
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mendpact-report
           path: mendpact-report.json
@@ -59,12 +68,12 @@ jobs:
   mendpact:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - id: mendpact
-        uses: adhodari03/mendpact@v0.1.0
+        uses: adhodari03/mendpact@v0.2.0
         with:
           mode: guard
           target: https://your-server.example/mcp
@@ -76,7 +85,7 @@ jobs:
           output: mendpact-guard-report.json
           save-scan: mendpact-candidate-scan.json
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mendpact-guard-report
           path: mendpact-guard-report.json
@@ -97,16 +106,16 @@ defines composite inputs and outputs. Its
 [composite Action guide](https://docs.github.com/en/actions/tutorials/create-actions/create-a-composite-action)
 also recommends consuming an Action through an explicit repository revision.
 
-## Publishing the first Action release
+## Publishing an Action release
 
-1. Merge the Action upgrade only after its local `uses: ./` CI smoke test passes.
-2. Create a GitHub release from the merged commit with tag `v0.1.0` and title
-   `MendPact v0.1.0`.
+1. Merge the release change only after its local `uses: ./` CI smoke test passes.
+2. Create a GitHub release from the merged commit with a tag matching the package version, such
+   as `v0.2.0`, and title it `MendPact v0.2.0`.
 3. Keep the release notes explicit that this is an alpha supporting Streamable HTTP MCP targets.
 4. If publishing to GitHub Marketplace, open the root `action.yml`, select the Marketplace
    release banner, accept the Marketplace Developer Agreement if prompted, and publish the same
-   `v0.1.0` release. GitHub will validate the Action name and metadata in that flow.
-5. Test `adhodari03/mendpact@v0.1.0` from a separate repository before announcing it.
+   release. GitHub will validate the Action name and metadata in that flow.
+5. Test the immutable tag from a release-smoke workflow before announcing it.
 6. Record the release commit's full SHA so security-conscious users can pin it immutably.
 
 The repository must remain public and keep a single root Action metadata file for Marketplace

@@ -114,3 +114,11 @@ runs:
         MENDPACT_SAVE_SCAN: ${{ inputs.save-scan }}
         MENDPACT_ACTION_PATH: ${{ github.action_path }}
       run: bash "${MENDPACT_ACTION_PATH}/scripts/run-action.sh"
+
+    - name: Publish MendPact job summary
+      if: ${{ always() }}
+      continue-on-error: true
+      shell: bash
+      env:
+        MENDPACT_OUTPUT: ${{ inputs.output }}
+      run: python -m mendpact.action_report "${MENDPACT_OUTPUT}"
