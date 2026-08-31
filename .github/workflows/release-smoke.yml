@@ -19,10 +19,10 @@ jobs:
 
     steps:
       - name: Check out test repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
@@ -89,7 +89,7 @@ jobs:
 
       - name: Upload release smoke report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mendpact-v0.1.0-release-smoke
           path: release-smoke-guard-report.json
