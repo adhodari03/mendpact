@@ -218,7 +218,8 @@ mendpact guard https://api.example/mcp \
 ```
 
 The resolved policy is embedded in the report and GitHub job summary. See the
-[policy reference](docs/POLICY.md) for profiles, Action configuration, and exit behavior.
+[policy reference](docs/POLICY.md) for profiles, controlled 14-day waivers, Action configuration,
+and exit behavior.
 
 ## MCP conformance
 

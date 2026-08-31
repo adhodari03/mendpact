@@ -87,12 +87,18 @@ def render_report(report: ScanReport, console: Console) -> None:
     table.add_column("Rule", width=12)
     table.add_column("Subject", overflow="fold")
     table.add_column("Finding", overflow="fold")
+    table.add_column("Policy", overflow="fold")
     for finding in report.findings:
         table.add_row(
             finding.severity.value.upper(),
             finding.rule_id,
             finding.subject or "-",
             f"{finding.title}: {finding.message}",
+            (
+                f"waived until {finding.waiver.expires_on}"
+                if finding.waiver
+                else "enforced"
+            ),
         )
     console.print(table)
 
@@ -158,6 +164,7 @@ def render_contract_diff_report(report: ContractDiffReport, console: Console) ->
         f"Breaking: {counts[ContractImpact.BREAKING.value]} | "
         f"Risky: {counts[ContractImpact.RISKY.value]} | "
         f"Compatible: {counts[ContractImpact.COMPATIBLE.value]} | "
+        f"Waived: {report.summary.waived_change_count} | "
         f"Affected scenarios: {report.summary.affected_scenario_count}"
     )
 
@@ -171,6 +178,7 @@ def render_contract_diff_report(report: ContractDiffReport, console: Console) ->
     table.add_column("Subject", overflow="fold")
     table.add_column("Change", overflow="fold")
     table.add_column("Scenarios", overflow="fold")
+    table.add_column("Policy", overflow="fold")
     styles = {
         ContractImpact.BREAKING: "red",
         ContractImpact.RISKY: "yellow",
@@ -183,6 +191,11 @@ def render_contract_diff_report(report: ContractDiffReport, console: Console) ->
             change.subject,
             change.message,
             ", ".join(change.affected_scenarios) or "-",
+            (
+                f"waived until {change.waiver.expires_on}"
+                if change.waiver
+                else "enforced"
+            ),
         )
     console.print(table)
 

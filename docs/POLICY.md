@@ -60,6 +60,36 @@ allow_insecure_http = true
 
 Never reuse a local policy for a production target.
 
+## Controlled waivers
+
+Waivers are exact, reviewed exceptions for a single rule and subject. They remain visible in JSON,
+terminal output, GitHub summaries, and annotations even while they prevent that result from
+failing CI.
+
+```toml
+[[waivers]]
+rule_id = "MP-MCP-004"
+subject = "tool:delete_project"
+reason = "Deletion is protected by a separately reviewed approval gate."
+approved_by = "security@example.com"
+approved_on = 2026-08-31
+expires_on = 2026-09-14
+```
+
+The following boundaries are enforced:
+
+- `rule_id` and `subject` must match the result exactly;
+- the reason, approver, approval date, and expiration date are mandatory;
+- expiration must be after approval and no more than 14 days later;
+- `expires_on` is exclusive, so the waiver stops applying at the start of that date;
+- approval dates cannot be in the future;
+- duplicate rule-and-subject waivers are rejected;
+- critical findings and breaking contract changes cannot be waived;
+- expired waivers remain in policy evidence but automatically stop suppressing failure.
+
+Renewal requires changing the approval and expiration dates in a new reviewed commit. This also
+changes the policy SHA-256 retained in the report.
+
 ## GitHub Action
 
 From the release containing policy support, the policy file owns the threshold and target
@@ -87,5 +117,5 @@ when a policy is present because the reviewed file is the source of truth.
 - Exit `1`: findings or contract changes reached the policy threshold, or behavior failed.
 - Exit `2`: the policy, target, inputs, connection, or report could not be configured.
 
-Reports retain the policy name, profile, resolved thresholds, network allowances, and SHA-256
-digest so results can be tied back to the exact reviewed file.
+Reports retain the policy name, profile, resolved thresholds, network allowances, waivers, and
+SHA-256 digest so results can be tied back to the exact reviewed file.

@@ -103,6 +103,7 @@ async def guard_mcp_url(
             scan,
             suite=suite,
             failure_threshold=contract_failure_threshold,
+            policy=applied_policy,
         )
     except ValueError as exc:
         return GuardReport(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 from uuid import uuid4
@@ -56,6 +56,23 @@ class PolicyProfile(StrEnum):
 
     PRODUCTION = "production"
     LOCAL = "local"
+
+
+class WaiverStatus(StrEnum):
+    ACTIVE = "active"
+    EXPIRED = "expired"
+
+
+class PolicyWaiver(BaseModel):
+    """One exact, time-bounded exception retained as report evidence."""
+
+    rule_id: str
+    subject: str
+    reason: str
+    approved_by: str
+    approved_on: date
+    expires_on: date
+    status: WaiverStatus
 
 
 class RegressionImpact(StrEnum):
@@ -117,6 +134,7 @@ class Finding(BaseModel):
     title: str
     message: str
     subject: str | None = None
+    waiver: PolicyWaiver | None = None
     evidence: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -126,6 +144,7 @@ class ScanSummary(BaseModel):
     resource_count: int
     prompt_count: int
     finding_count: int
+    waived_finding_count: int = 0
     findings_by_severity: dict[str, int]
 
 
@@ -170,6 +189,7 @@ class PolicySnapshot(BaseModel):
     contract_fail_on: ContractImpact
     allow_private: bool = False
     allow_insecure_http: bool = False
+    waivers: list[PolicyWaiver] = Field(default_factory=list)
 
 
 class ContractChangeKind(StrEnum):
@@ -187,6 +207,7 @@ class ContractChange(BaseModel):
     subject: str
     path: str
     message: str
+    waiver: PolicyWaiver | None = None
     before: Any = None
     after: Any = None
     affected_scenarios: list[str] = Field(default_factory=list)
@@ -194,6 +215,7 @@ class ContractChange(BaseModel):
 
 class ContractDiffSummary(BaseModel):
     change_count: int
+    waived_change_count: int = 0
     changes_by_impact: dict[str, int]
     affected_scenario_count: int
 
@@ -510,6 +532,7 @@ def summarize(graph: CapabilityGraph, findings: list[Finding]) -> ScanSummary:
         + len(graph.nodes_of_kind(NodeKind.RESOURCE_TEMPLATE)),
         prompt_count=len(graph.nodes_of_kind(NodeKind.PROMPT)),
         finding_count=len(findings),
+        waived_finding_count=sum(finding.waiver is not None for finding in findings),
         findings_by_severity=counts,
     )
 
