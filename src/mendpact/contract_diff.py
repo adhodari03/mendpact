@@ -18,9 +18,11 @@ from mendpact.domain import (
     ContractDiffSummary,
     ContractImpact,
     NodeKind,
+    PolicySnapshot,
     ScanReport,
     ScanStatus,
 )
+from mendpact.policy import apply_contract_waivers
 
 
 def load_scan_report(path: Path) -> ScanReport:
@@ -40,12 +42,16 @@ def diff_scan_reports(
     *,
     suite: BehaviorSuite | None = None,
     failure_threshold: ContractImpact = ContractImpact.BREAKING,
+    policy: PolicySnapshot | None = None,
 ) -> ContractDiffReport:
     """Compare two complete scan reports without contacting either target."""
 
     baseline_graph = _complete_graph(baseline, "baseline")
     candidate_graph = _complete_graph(candidate, "candidate")
-    changes = _graph_changes(baseline_graph, candidate_graph, suite)
+    changes = apply_contract_waivers(
+        _graph_changes(baseline_graph, candidate_graph, suite),
+        policy,
+    )
     changes.sort(
         key=lambda change: (
             -change.impact.rank,
@@ -54,7 +60,10 @@ def diff_scan_reports(
             change.rule_id,
         )
     )
-    failed = any(change.impact.rank >= failure_threshold.rank for change in changes)
+    failed = any(
+        change.waiver is None and change.impact.rank >= failure_threshold.rank
+        for change in changes
+    )
     counts = {impact.value: 0 for impact in ContractImpact}
     for change in changes:
         counts[change.impact.value] += 1
@@ -73,6 +82,7 @@ def diff_scan_reports(
         changes=changes,
         summary=ContractDiffSummary(
             change_count=len(changes),
+            waived_change_count=sum(change.waiver is not None for change in changes),
             changes_by_impact=counts,
             affected_scenario_count=len(affected_scenarios),
         ),

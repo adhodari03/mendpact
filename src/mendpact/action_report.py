@@ -80,6 +80,42 @@ def _limited_rows(items: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], in
     return shown, len(items) - len(shown)
 
 
+def _waiver_label(item: dict[str, Any]) -> str:
+    waiver = item.get("waiver")
+    if not isinstance(waiver, dict):
+        return "Enforced"
+    return f"Waived until {waiver.get('expires_on', 'unknown')}"
+
+
+def _annotation_for_item(
+    item: dict[str, Any],
+    *,
+    classification: str,
+    fallback_subject: str,
+    fallback_message: str,
+) -> Annotation:
+    waiver = item.get("waiver")
+    waived = isinstance(waiver, dict)
+    message_parts = [
+        str(item.get("subject") or fallback_subject),
+        str(item.get("message") or item.get("title") or fallback_message),
+    ]
+    if isinstance(waiver, dict):
+        message_parts.append(
+            "Waived until "
+            f"{waiver.get('expires_on')} by {waiver.get('approved_by')}: "
+            f"{waiver.get('reason')}"
+        )
+    return Annotation(
+        level="notice" if waived else "warning",
+        title=(
+            f"MendPact {item.get('rule_id', 'finding')} "
+            f"({classification}{', WAIVED' if waived else ''})"
+        ),
+        message=" — ".join(message_parts),
+    )
+
+
 def _scan_sections(scan: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
     lines: list[str] = []
     annotations: list[Annotation] = []
@@ -89,7 +125,7 @@ def _scan_sections(scan: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
             "### Capability scan",
             "",
             *_table(
-                ["Status", "Tools", "Resources", "Prompts", "Findings"],
+                ["Status", "Tools", "Resources", "Prompts", "Findings", "Waived"],
                 [
                     [
                         _status(scan.get("status")),
@@ -97,6 +133,7 @@ def _scan_sections(scan: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
                         summary.get("resource_count", 0),
                         summary.get("prompt_count", 0),
                         summary.get("finding_count", len(scan.get("findings", []))),
+                        summary.get("waived_finding_count", 0),
                     ]
                 ],
             ),
@@ -112,13 +149,14 @@ def _scan_sections(scan: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
                 "#### Findings",
                 "",
                 *_table(
-                    ["Severity", "Rule", "Subject", "Finding"],
+                    ["Severity", "Rule", "Subject", "Finding", "Policy"],
                     [
                         [
                             str(item.get("severity", "unknown")).upper(),
                             item.get("rule_id"),
                             item.get("subject"),
                             item.get("message") or item.get("title"),
+                            _waiver_label(item),
                         ]
                         for item in shown
                     ],
@@ -131,17 +169,11 @@ def _scan_sections(scan: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
         for item in findings:
             severity = str(item.get("severity", "unknown")).upper()
             annotations.append(
-                Annotation(
-                    level="warning",
-                    title=f"MendPact {item.get('rule_id', 'finding')} ({severity})",
-                    message=" — ".join(
-                        part
-                        for part in [
-                            str(item.get("subject") or "MCP target"),
-                            str(item.get("message") or item.get("title") or "Finding reported"),
-                        ]
-                        if part
-                    ),
+                _annotation_for_item(
+                    item,
+                    classification=severity,
+                    fallback_subject="MCP target",
+                    fallback_message="Finding reported",
                 )
             )
     return lines, annotations
@@ -178,10 +210,11 @@ def _guard_sections(payload: dict[str, Any]) -> tuple[list[str], list[Annotation
                 "### Contract changes",
                 "",
                 *_table(
-                    ["Total", "Compatible", "Risky", "Breaking"],
+                    ["Total", "Waived", "Compatible", "Risky", "Breaking"],
                     [
                         [
                             contract_summary.get("change_count", len(changes)),
+                            contract_summary.get("waived_change_count", 0),
                             impact_counts.get("compatible", 0),
                             impact_counts.get("risky", 0),
                             impact_counts.get("breaking", 0),
@@ -196,7 +229,14 @@ def _guard_sections(payload: dict[str, Any]) -> tuple[list[str], list[Annotation
                 [
                     "",
                     *_table(
-                        ["Impact", "Rule", "Subject", "Change", "Affected scenarios"],
+                        [
+                            "Impact",
+                            "Rule",
+                            "Subject",
+                            "Change",
+                            "Affected scenarios",
+                            "Policy",
+                        ],
                         [
                             [
                                 str(item.get("impact", "unknown")).upper(),
@@ -204,6 +244,7 @@ def _guard_sections(payload: dict[str, Any]) -> tuple[list[str], list[Annotation
                                 item.get("subject"),
                                 item.get("message"),
                                 item.get("affected_scenarios", []),
+                                _waiver_label(item),
                             ]
                             for item in shown
                         ],
@@ -217,17 +258,11 @@ def _guard_sections(payload: dict[str, Any]) -> tuple[list[str], list[Annotation
             for item in changes:
                 impact = str(item.get("impact", "unknown")).upper()
                 annotations.append(
-                    Annotation(
-                        level="warning",
-                        title=f"MendPact {item.get('rule_id', 'contract change')} ({impact})",
-                        message=" — ".join(
-                            part
-                            for part in [
-                                str(item.get("subject") or "MCP contract"),
-                                str(item.get("message") or "Contract change detected"),
-                            ]
-                            if part
-                        ),
+                    _annotation_for_item(
+                        item,
+                        classification=impact,
+                        fallback_subject="MCP contract",
+                        fallback_message="Contract change detected",
                     )
                 )
 
@@ -314,6 +349,9 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
 
     policy = payload.get("policy")
     if isinstance(policy, dict):
+        waivers = [item for item in policy.get("waivers", []) if isinstance(item, dict)]
+        active_waivers = sum(item.get("status") == "active" for item in waivers)
+        expired_waivers = sum(item.get("status") == "expired" for item in waivers)
         lines.extend(
             [
                 "### Applied policy",
@@ -326,6 +364,8 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
                         "Contract fails on",
                         "Private targets",
                         "Insecure HTTP",
+                        "Active waivers",
+                        "Expired waivers",
                     ],
                     [
                         [
@@ -335,12 +375,41 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
                             policy.get("contract_fail_on"),
                             "allowed" if policy.get("allow_private") else "blocked",
                             "allowed" if policy.get("allow_insecure_http") else "blocked",
+                            active_waivers,
+                            expired_waivers,
                         ]
                     ],
                 ),
                 "",
             ]
         )
+        if waivers:
+            shown, omitted = _limited_rows(waivers)
+            lines.extend(
+                [
+                    "#### Policy waivers",
+                    "",
+                    *_table(
+                        ["Rule", "Subject", "Status", "Expires", "Approved by", "Reason"],
+                        [
+                            [
+                                item.get("rule_id"),
+                                item.get("subject"),
+                                str(item.get("status", "unknown")).upper(),
+                                item.get("expires_on"),
+                                item.get("approved_by"),
+                                item.get("reason"),
+                            ]
+                            for item in shown
+                        ],
+                    ),
+                    "",
+                ]
+            )
+            if omitted:
+                lines.extend(
+                    [f"_{omitted} additional waivers are available in the JSON report._", ""]
+                )
 
     if schema == "mendpact.guard.v1":
         section_lines, annotations = _guard_sections(payload)

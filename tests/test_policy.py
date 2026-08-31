@@ -1,17 +1,68 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import pytest
 
-from mendpact.domain import ContractImpact, PolicyProfile, Severity
-from mendpact.policy import PolicyConfigurationError, load_policy, target_policy
+from mendpact.contract_diff import diff_scan_reports
+from mendpact.domain import (
+    CapabilityGraph,
+    CapabilityNode,
+    ContractChange,
+    ContractChangeKind,
+    ContractImpact,
+    Finding,
+    NodeKind,
+    PolicyProfile,
+    ScanReport,
+    ScanStatus,
+    Severity,
+    WaiverStatus,
+)
+from mendpact.policy import (
+    PolicyConfigurationError,
+    apply_contract_waivers,
+    apply_finding_waivers,
+    load_policy,
+    target_policy,
+)
+from mendpact.scanner import scan_mcp_url
+from mendpact.security.targets import TargetPolicy
 
 
 def _write_policy(tmp_path: Path, content: str) -> Path:
     path = tmp_path / "mendpact.toml"
     path.write_text(content, encoding="utf-8")
     return path
+
+
+def _waiver_policy(
+    tmp_path: Path,
+    *,
+    rule_id: str = "MP-TEST-001",
+    subject: str = "tool:delete_project",
+    approved_on: str = "2026-08-01",
+    expires_on: str = "2026-08-15",
+) -> Path:
+    return _write_policy(
+        tmp_path,
+        '\n'.join(
+            [
+                'schema_version = "mendpact.policy.v1"',
+                'name = "production"',
+                'profile = "production"',
+                '',
+                '[[waivers]]',
+                f'rule_id = "{rule_id}"',
+                f'subject = "{subject}"',
+                'reason = "Temporary migration exception."',
+                'approved_by = "security@example.com"',
+                f'approved_on = {approved_on}',
+                f'expires_on = {expires_on}',
+            ]
+        ),
+    )
 
 
 def test_production_profile_resolves_strict_defaults(tmp_path: Path) -> None:
@@ -110,3 +161,195 @@ def test_rejects_unknown_policy_fields(tmp_path: Path) -> None:
 
     with pytest.raises(PolicyConfigurationError, match="Extra inputs are not permitted"):
         load_policy(path)
+
+
+def test_resolves_active_14_day_exact_waiver(tmp_path: Path) -> None:
+    policy = load_policy(_waiver_policy(tmp_path), today=date(2026, 8, 10))
+
+    assert len(policy.waivers) == 1
+    waiver = policy.waivers[0]
+    assert waiver.status == WaiverStatus.ACTIVE
+    assert waiver.rule_id == "MP-TEST-001"
+    assert waiver.subject == "tool:delete_project"
+    assert waiver.approved_by == "security@example.com"
+
+
+def test_rejects_waiver_longer_than_14_days(tmp_path: Path) -> None:
+    path = _waiver_policy(tmp_path, expires_on="2026-08-16")
+
+    with pytest.raises(PolicyConfigurationError, match="cannot exceed 14 days"):
+        load_policy(path, today=date(2026, 8, 10))
+
+
+def test_rejects_future_approval_date(tmp_path: Path) -> None:
+    path = _waiver_policy(
+        tmp_path,
+        approved_on="2026-08-11",
+        expires_on="2026-08-12",
+    )
+
+    with pytest.raises(PolicyConfigurationError, match="future approved_on"):
+        load_policy(path, today=date(2026, 8, 10))
+
+
+def test_rejects_duplicate_rule_and_subject_waivers(tmp_path: Path) -> None:
+    path = _waiver_policy(tmp_path)
+    source = path.read_text(encoding="utf-8")
+    duplicate = source[source.index("[[waivers]]") :]
+    path.write_text(source + "\n" + duplicate, encoding="utf-8")
+
+    with pytest.raises(PolicyConfigurationError, match="duplicate rule_id and subject"):
+        load_policy(path, today=date(2026, 8, 10))
+
+
+def test_expired_waiver_remains_visible_but_is_not_applied(tmp_path: Path) -> None:
+    policy = load_policy(_waiver_policy(tmp_path), today=date(2026, 8, 15))
+    finding = Finding(
+        rule_id="MP-TEST-001",
+        severity=Severity.HIGH,
+        title="Risky tool",
+        message="The tool is risky.",
+        subject="tool:delete_project",
+    )
+
+    applied = apply_finding_waivers([finding], policy)
+
+    assert policy.waivers[0].status == WaiverStatus.EXPIRED
+    assert applied[0].waiver is None
+
+
+def test_waiver_requires_exact_rule_and_subject_and_cannot_suppress_critical(
+    tmp_path: Path,
+) -> None:
+    policy = load_policy(_waiver_policy(tmp_path), today=date(2026, 8, 10))
+    exact = Finding(
+        rule_id="MP-TEST-001",
+        severity=Severity.HIGH,
+        title="Risky tool",
+        message="The tool is risky.",
+        subject="tool:delete_project",
+    )
+    wrong_subject = exact.model_copy(update={"subject": "tool:delete_account"})
+    critical = exact.model_copy(update={"severity": Severity.CRITICAL})
+
+    applied = apply_finding_waivers([exact, wrong_subject, critical], policy)
+
+    assert applied[0].waiver is not None
+    assert applied[1].waiver is None
+    assert applied[2].waiver is None
+
+
+def test_waiver_cannot_suppress_breaking_contract_change(tmp_path: Path) -> None:
+    policy = load_policy(_waiver_policy(tmp_path), today=date(2026, 8, 10))
+    risky = ContractChange(
+        rule_id="MP-TEST-001",
+        impact=ContractImpact.RISKY,
+        kind=ContractChangeKind.MODIFIED,
+        subject="tool:delete_project",
+        path="/description",
+        message="Description changed.",
+    )
+    breaking = risky.model_copy(update={"impact": ContractImpact.BREAKING})
+
+    applied = apply_contract_waivers([risky, breaking], policy)
+
+    assert applied[0].waiver is not None
+    assert applied[1].waiver is None
+
+
+@pytest.mark.anyio
+async def test_active_waiver_prevents_matching_high_finding_from_failing_scan(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    policy = load_policy(
+        _waiver_policy(tmp_path, rule_id="MP-MCP-004"),
+        today=date(2026, 8, 10),
+    )
+    graph = CapabilityGraph(
+        target="https://example.com/mcp",
+        nodes=[
+            CapabilityNode(
+                id="tool:delete_project",
+                kind=NodeKind.TOOL,
+                name="delete_project",
+                description="Permanently delete one project after explicit authorization.",
+                input_schema={
+                    "type": "object",
+                    "properties": {"project_id": {"type": "string"}},
+                    "required": ["project_id"],
+                    "additionalProperties": False,
+                },
+            )
+        ],
+    )
+
+    async def fake_validate(*args: object, **kwargs: object) -> None:
+        return None
+
+    async def fake_discover(*args: object, **kwargs: object) -> CapabilityGraph:
+        return graph
+
+    monkeypatch.setattr("mendpact.scanner.validate_target_url", fake_validate)
+    monkeypatch.setattr("mendpact.scanner.discover_mcp_target", fake_discover)
+
+    report = await scan_mcp_url(
+        graph.target,
+        failure_threshold=Severity.HIGH,
+        policy=TargetPolicy(),
+        applied_policy=policy,
+    )
+
+    assert report.status == ScanStatus.PASSED
+    assert report.summary is not None
+    assert report.summary.waived_finding_count == 1
+    assert report.findings[0].waiver is not None
+
+
+def test_active_waiver_prevents_matching_risky_change_from_failing_diff(
+    tmp_path: Path,
+) -> None:
+    policy = load_policy(
+        _waiver_policy(
+            tmp_path,
+            rule_id="MP-DIFF-003",
+            subject="tool:read_status",
+        ),
+        today=date(2026, 8, 10),
+    )
+    baseline_node = CapabilityNode(
+        id="tool:read_status",
+        kind=NodeKind.TOOL,
+        name="read_status",
+        description="Read status.",
+        input_schema={"type": "object", "additionalProperties": False},
+    )
+    candidate_node = baseline_node.model_copy(
+        update={"description": "Read current status."}
+    )
+    baseline = ScanReport(
+        target="https://example.com/mcp",
+        status=ScanStatus.PASSED,
+        failure_threshold=Severity.HIGH,
+        graph=CapabilityGraph(target="https://example.com/mcp", nodes=[baseline_node]),
+    )
+    candidate = baseline.model_copy(
+        update={
+            "scan_id": "candidate",
+            "graph": CapabilityGraph(
+                target="https://example.com/mcp",
+                nodes=[candidate_node],
+            ),
+        }
+    )
+
+    report = diff_scan_reports(
+        baseline,
+        candidate,
+        failure_threshold=ContractImpact.RISKY,
+        policy=policy,
+    )
+
+    assert report.status == ScanStatus.PASSED
+    assert report.summary.waived_change_count == 1
+    assert report.changes[0].waiver is not None

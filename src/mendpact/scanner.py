@@ -7,6 +7,7 @@ from typing import Any
 from mendpact.adapters.mcp import discover_mcp_target
 from mendpact.checks.rules import run_deterministic_checks
 from mendpact.domain import PolicySnapshot, ScanReport, ScanStatus, Severity, summarize
+from mendpact.policy import apply_finding_waivers
 from mendpact.security.targets import TargetPolicy, validate_target_url
 
 
@@ -30,8 +31,11 @@ async def scan_mcp_url(
             errors=[f"{type(exc).__name__}: {exc}"],
         )
 
-    findings = run_deterministic_checks(graph)
-    failed = any(finding.severity.rank >= failure_threshold.rank for finding in findings)
+    findings = apply_finding_waivers(run_deterministic_checks(graph), applied_policy)
+    failed = any(
+        finding.waiver is None and finding.severity.rank >= failure_threshold.rank
+        for finding in findings
+    )
     return ScanReport(
         target=target,
         status=ScanStatus.FAILED if failed else ScanStatus.PASSED,

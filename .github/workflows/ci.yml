@@ -111,6 +111,67 @@ jobs:
           assert report["summary"]["contract_status"] == "failed"
           assert report["summary"]["behavior_status"] == "passed"
           PY
+      - name: Verify controlled waivers are visible and time bounded
+        shell: bash
+        env:
+          WAIVER_POLICY: ${{ runner.temp }}/mendpact-waiver.toml
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import UTC, datetime, timedelta
+          from pathlib import Path
+
+          approved = datetime.now(UTC).date()
+          expires = approved + timedelta(days=14)
+          Path(os.environ["WAIVER_POLICY"]).write_text(
+              f'''schema_version = "mendpact.policy.v1"
+          name = "local-waiver-fixture"
+          profile = "local"
+          scan_fail_on = "high"
+          contract_fail_on = "risky"
+          allow_private = true
+          allow_insecure_http = true
+
+          [[waivers]]
+          rule_id = "MP-MCP-004"
+          subject = "tool:delete_project"
+          reason = "Temporary exception for the isolated CI fixture."
+          approved_by = "mendpact-ci"
+          approved_on = {approved.isoformat()}
+          expires_on = {expires.isoformat()}
+
+          [[waivers]]
+          rule_id = "MP-DIFF-003"
+          subject = "tool:read_status"
+          reason = "Temporary exception for the isolated CI fixture."
+          approved_by = "mendpact-ci"
+          approved_on = {approved.isoformat()}
+          expires_on = {expires.isoformat()}
+          ''',
+              encoding="utf-8",
+          )
+          PY
+
+          mendpact guard http://127.0.0.1:8000/mcp \
+            --baseline examples/guard/baseline-scan.json \
+            --scenario examples/scenarios/read-status.json \
+            --replay examples/replays/read-status.json \
+            --policy "${WAIVER_POLICY}" \
+            --output waiver-policy-report.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("waiver-policy-report.json").read_text(encoding="utf-8"))
+          assert report["status"] == "passed"
+          assert len(report["policy"]["waivers"]) == 2
+          assert all(item["status"] == "active" for item in report["policy"]["waivers"])
+          assert report["scan"]["summary"]["waived_finding_count"] == 1
+          assert report["contract_diff"]["summary"]["waived_change_count"] == 1
+          assert report["scan"]["findings"][0]["waiver"] is not None
+          assert report["contract_diff"]["changes"][0]["waiver"] is not None
+          PY
       - name: MCP conformance smoke test
         run: >-
           mendpact conformance
@@ -145,4 +206,11 @@ jobs:
         with:
           name: mendpact-strict-policy-report
           path: strict-policy-report.json
+          if-no-files-found: ignore
+      - name: Upload waiver policy report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-waiver-policy-report
+          path: waiver-policy-report.json
           if-no-files-found: ignore

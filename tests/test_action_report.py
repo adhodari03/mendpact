@@ -148,3 +148,33 @@ def test_missing_report_returns_non_failing_feedback(tmp_path: Path) -> None:
     assert "MendPact report unavailable" in rendered.summary
     assert rendered.annotations[0].level == "warning"
     assert str(report) in rendered.annotations[0].message
+
+
+def test_renders_active_waiver_as_visible_notice() -> None:
+    payload = _scan_payload()
+    waiver = {
+        "rule_id": "MP-MCP-004",
+        "subject": "tool:delete|project",
+        "reason": "Migration requires a temporary exception.",
+        "approved_by": "security@example.com",
+        "approved_on": "2026-08-01",
+        "expires_on": "2026-08-15",
+        "status": "active",
+    }
+    payload["status"] = "passed"
+    policy = payload["policy"]
+    assert isinstance(policy, dict)
+    policy["waivers"] = [waiver]
+    findings = payload["findings"]
+    assert isinstance(findings, list)
+    assert isinstance(findings[0], dict)
+    findings[0]["waiver"] = waiver
+
+    rendered = render_action_report(payload, "scan.json")
+
+    assert "#### Policy waivers" in rendered.summary
+    assert "ACTIVE" in rendered.summary
+    assert "Waived until 2026-08-15" in rendered.summary
+    assert "security@example.com" in rendered.summary
+    assert rendered.annotations[0].level == "notice"
+    assert "WAIVED" in rendered.annotations[0].title

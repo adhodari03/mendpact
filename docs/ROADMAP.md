@@ -44,7 +44,7 @@
 
 - [x] versioned policy-as-code with production and local profiles
 - [x] strict-policy negative CI test
-- controlled, expiring waivers
+- [x] controlled, expiring waivers with a 14-day maximum
 - one-command project initialization
 - authenticated production targets and OAuth metadata checks
 
