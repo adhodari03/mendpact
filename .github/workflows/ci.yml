@@ -54,7 +54,8 @@ jobs:
           mendpact evaluate
           http://127.0.0.1:8000/mcp
           --scenario examples/scenarios/read-status.json
-          --replay examples/replays/read-status.json
+          --replay examples/replays/openai-read-status-casefold.json
+          --baseline examples/baselines/read-status.json
           --allow-private
           --allow-insecure-http
           --output behavior-report.json
