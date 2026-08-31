@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 from uuid import uuid4
@@ -49,6 +49,30 @@ class ScanStatus(StrEnum):
     PASSED = "passed"
     FAILED = "failed"
     ERROR = "error"
+
+
+class PolicyProfile(StrEnum):
+    """Security posture selected by a versioned MendPact policy."""
+
+    PRODUCTION = "production"
+    LOCAL = "local"
+
+
+class WaiverStatus(StrEnum):
+    ACTIVE = "active"
+    EXPIRED = "expired"
+
+
+class PolicyWaiver(BaseModel):
+    """One exact, time-bounded exception retained as report evidence."""
+
+    rule_id: str
+    subject: str
+    reason: str
+    approved_by: str
+    approved_on: date
+    expires_on: date
+    status: WaiverStatus
 
 
 class RegressionImpact(StrEnum):
@@ -110,6 +134,7 @@ class Finding(BaseModel):
     title: str
     message: str
     subject: str | None = None
+    waiver: PolicyWaiver | None = None
     evidence: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -119,6 +144,7 @@ class ScanSummary(BaseModel):
     resource_count: int
     prompt_count: int
     finding_count: int
+    waived_finding_count: int = 0
     findings_by_severity: dict[str, int]
 
 
@@ -129,10 +155,88 @@ class ScanReport(BaseModel):
     target: str
     status: ScanStatus
     failure_threshold: Severity
+    policy: PolicySnapshot | None = None
     graph: CapabilityGraph | None = None
     findings: list[Finding] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     summary: ScanSummary | None = None
+
+
+class ContractImpact(StrEnum):
+    """Compatibility impact assigned to one contract change."""
+
+    COMPATIBLE = "compatible"
+    RISKY = "risky"
+    BREAKING = "breaking"
+
+    @property
+    def rank(self) -> int:
+        return {
+            ContractImpact.COMPATIBLE: 0,
+            ContractImpact.RISKY: 1,
+            ContractImpact.BREAKING: 2,
+        }[self]
+
+
+class PolicySnapshot(BaseModel):
+    """Resolved policy evidence embedded in scan and guard reports."""
+
+    schema_version: Literal["mendpact.policy.v1"] = "mendpact.policy.v1"
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    name: str
+    profile: PolicyProfile
+    scan_fail_on: Severity
+    contract_fail_on: ContractImpact
+    allow_private: bool = False
+    allow_insecure_http: bool = False
+    waivers: list[PolicyWaiver] = Field(default_factory=list)
+
+
+class ContractChangeKind(StrEnum):
+    ADDED = "added"
+    REMOVED = "removed"
+    MODIFIED = "modified"
+
+
+class ContractChange(BaseModel):
+    """One deterministic difference between two MCP capability graphs."""
+
+    rule_id: str
+    impact: ContractImpact
+    kind: ContractChangeKind
+    subject: str
+    path: str
+    message: str
+    waiver: PolicyWaiver | None = None
+    before: Any = None
+    after: Any = None
+    affected_scenarios: list[str] = Field(default_factory=list)
+
+
+class ContractDiffSummary(BaseModel):
+    change_count: int
+    waived_change_count: int = 0
+    changes_by_impact: dict[str, int]
+    affected_scenario_count: int
+
+
+class ContractDiffReport(BaseModel):
+    """Versioned compatibility report for two scan artifacts."""
+
+    schema_version: Literal["mendpact.contract-diff.v1"] = (
+        "mendpact.contract-diff.v1"
+    )
+    diff_id: str = Field(default_factory=lambda: str(uuid4()))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    baseline_scan_id: str
+    candidate_scan_id: str
+    baseline_target: str
+    candidate_target: str
+    status: ScanStatus
+    failure_threshold: ContractImpact
+    changes: list[ContractChange] = Field(default_factory=list)
+    summary: ContractDiffSummary
+    errors: list[str] = Field(default_factory=list)
 
 
 class SpecReference(BaseModel):
@@ -389,6 +493,33 @@ class BehaviorReport(BaseModel):
     errors: list[str] = Field(default_factory=list)
 
 
+class GuardSummary(BaseModel):
+    """Stage-level outcome for one unified guard run."""
+
+    scan_status: ScanStatus
+    contract_status: ScanStatus | None = None
+    behavior_status: ScanStatus | None = None
+    affected_scenario_count: int = Field(default=0, ge=0)
+    evaluated_scenario_count: int = Field(default=0, ge=0)
+
+
+class GuardReport(BaseModel):
+    """Versioned CI report combining scan, diff, and affected replays."""
+
+    schema_version: Literal["mendpact.guard.v1"] = "mendpact.guard.v1"
+    guard_id: str = Field(default_factory=lambda: str(uuid4()))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    target: str
+    status: ScanStatus
+    policy: PolicySnapshot | None = None
+    scan: ScanReport
+    contract_diff: ContractDiffReport | None = None
+    behavior: BehaviorReport | None = None
+    behavior_skipped_reason: str | None = None
+    summary: GuardSummary
+    errors: list[str] = Field(default_factory=list)
+
+
 def summarize(graph: CapabilityGraph, findings: list[Finding]) -> ScanSummary:
     counts = {severity.value: 0 for severity in Severity}
     for finding in findings:
@@ -401,6 +532,7 @@ def summarize(graph: CapabilityGraph, findings: list[Finding]) -> ScanSummary:
         + len(graph.nodes_of_kind(NodeKind.RESOURCE_TEMPLATE)),
         prompt_count=len(graph.nodes_of_kind(NodeKind.PROMPT)),
         finding_count=len(findings),
+        waived_finding_count=sum(finding.waiver is not None for finding in findings),
         findings_by_severity=counts,
     )
 

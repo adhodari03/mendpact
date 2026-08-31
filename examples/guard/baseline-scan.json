@@ -1,0 +1,100 @@
+{
+  "schema_version": "mendpact.scan.v1",
+  "scan_id": "fixture-guard-baseline-v1",
+  "generated_at": "2026-08-30T00:00:00Z",
+  "target": "http://127.0.0.1:8000/mcp",
+  "status": "passed",
+  "failure_threshold": "critical",
+  "graph": {
+    "target": "http://127.0.0.1:8000/mcp",
+    "protocol": "mcp",
+    "protocol_version": "2026-07-28",
+    "server_name": "MendPact Fixture",
+    "server_version": "",
+    "instructions": null,
+    "nodes": [
+      {
+        "id": "server:http://127.0.0.1:8000/mcp",
+        "kind": "server",
+        "name": "MendPact Fixture"
+      },
+      {
+        "id": "tool:read_status",
+        "kind": "tool",
+        "name": "read_status",
+        "description": "Read the health status of one component.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "component": {
+              "title": "Component",
+              "type": "string"
+            }
+          },
+          "required": [
+            "component"
+          ],
+          "title": "read_statusArguments"
+        },
+        "metadata": {
+          "output_schema": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "read_statusDictOutput",
+            "type": "object"
+          }
+        }
+      },
+      {
+        "id": "tool:delete_project",
+        "kind": "tool",
+        "name": "delete_project",
+        "description": "Permanently delete the selected project and all of its stored artifacts.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project_id"
+          ],
+          "title": "delete_projectArguments"
+        },
+        "metadata": {
+          "output_schema": {
+            "properties": {
+              "result": {
+                "title": "Result",
+                "type": "string"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "title": "delete_projectOutput",
+            "type": "object"
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "source": "server:http://127.0.0.1:8000/mcp",
+        "target": "tool:read_status",
+        "relationship": "exposes"
+      },
+      {
+        "source": "server:http://127.0.0.1:8000/mcp",
+        "target": "tool:delete_project",
+        "relationship": "exposes"
+      }
+    ],
+    "warnings": []
+  },
+  "findings": [],
+  "errors": []
+}

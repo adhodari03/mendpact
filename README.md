@@ -135,6 +135,92 @@ a one-sided proportion-test p-value as supporting statistical context; predictab
 remain the source of the CI exit code. See the included
 [`read-status` baseline](examples/baselines/read-status.json) for the JSON format.
 
+## MCP contract diff
+
+MendPact can compare two versioned scan reports without reconnecting to either MCP server. It
+classifies capability and JSON Schema changes as `compatible`, `risky`, or `breaking`, then maps
+changed tools to behavior scenarios that may need retesting.
+
+```bash
+mendpact diff \
+  examples/contracts/baseline-scan.json \
+  examples/contracts/candidate-scan.json \
+  --scenario examples/scenarios/read-status.json \
+  --fail-on risky \
+  --output contract-diff.json
+```
+
+The default CI threshold is `breaking`. Use `--fail-on risky` when description changes, newly
+added tools, relaxed schemas, or other model-routing risks should also block a change. Reports
+include stable rule IDs, before-and-after evidence, JSON Pointer paths, and affected scenario
+IDs. The example intentionally exits with code `1` under the strict `risky` threshold because
+the tool description changed. The command is deterministic and makes no model-provider or MCP
+network request. See the [contract-diff rule reference](docs/CONTRACT_DIFF.md) for the complete
+classification policy.
+
+## Unified CI guard
+
+`mendpact guard` combines the routine pull-request workflow into one command. It scans the
+current endpoint once, compares it with a committed contract baseline, calculates the behavior
+blast radius, and replays only affected scenarios against the discovered tool catalog.
+
+```bash
+mendpact guard http://127.0.0.1:8000/mcp \
+  --baseline examples/guard/baseline-scan.json \
+  --scenario examples/scenarios/read-status.json \
+  --replay examples/replays/read-status.json \
+  --scan-fail-on critical \
+  --allow-private \
+  --allow-insecure-http \
+  --output guard-report.json
+```
+
+The resulting `mendpact.guard.v1` report embeds scan, contract, and replay evidence under one CI
+status. The workflow does not execute MCP tools or contact a model provider, so it is
+deterministic and free to run. See the [guard reference](docs/GUARD.md) for its stage and exit-code
+policy.
+
+## GitHub Action
+
+MendPact can run as a composite GitHub Action. Scan mode remains the default for backward
+compatibility, while guard mode runs the complete scan, contract, and affected-replay workflow.
+
+```yaml
+- id: mendpact
+  uses: adhodari03/mendpact@v0.2.0
+  with:
+    mode: guard
+    target: https://your-server.example/mcp
+    baseline: mendpact/baseline-scan.json
+    scenario: mendpact/scenarios.json
+    replay: mendpact/replay.json
+    output: mendpact-guard-report.json
+```
+
+The `v0.2.0` Action writes a Markdown job summary and bounded workflow annotations while keeping
+the JSON report as its complete machine-readable output. It also exposes the report and
+candidate-scan paths so the consuming workflow controls artifact upload and retention. Pin an
+exact full commit SHA when an immutable reference with stronger supply-chain guarantees is
+required. See the [GitHub Action guide](docs/GITHUB_ACTION.md) for complete scan and guard
+workflows.
+
+## Policy as code
+
+MendPact can load reviewed production or local settings from a versioned TOML policy. Production
+policies fail on `high` scan findings and `risky` contract changes by default, and cannot enable
+private targets or plaintext HTTP.
+
+```bash
+mendpact guard https://api.example/mcp \
+  --baseline mendpact/baseline-scan.json \
+  --policy mendpact.toml \
+  --output mendpact-guard-report.json
+```
+
+The resolved policy is embedded in the report and GitHub job summary. See the
+[policy reference](docs/POLICY.md) for profiles, controlled 14-day waivers, Action configuration,
+and exit behavior.
+
 ## MCP conformance
 
 MendPact also wraps the official MCP server conformance framework, pinned to version `0.1.16`.

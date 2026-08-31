@@ -2,7 +2,8 @@
 
 MendPact's default development loop does not need paid model calls. Run mocked driver tests and
 saved replays on every commit, then use a small live-provider sample only when validating a model
-integration or preparing a release. Selected tools are graded but never executed.
+integration or preparing a release. The unified guard uses deterministic replay data and also
+costs $0 in provider usage. Selected tools are graded but never executed.
 
 ## Recommended test ladder
 
@@ -32,7 +33,7 @@ sending project data.
 
 - Keep deterministic replays and mocked API responses in CI.
 - Run live calls only in a protected, manually triggered job with a small scenario cap.
-- Start with one inexpensive model, then add Anthropic and Gemini drivers in Milestone 0.3.
+- Start with one inexpensive model, then add Anthropic and Gemini drivers in Milestone 0.5.
 - Record token counts in behavior reports and stop a run when its configured budget is reached.
 - For a hosted product, use bring-your-own-key accounts so provider usage belongs to the user.
 - Recheck provider prices before setting a production budget.

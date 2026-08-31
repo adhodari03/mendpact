@@ -95,3 +95,66 @@ mendpact evaluate http://127.0.0.1:8000/mcp \
 ```
 
 This reproduction makes no model-provider request and incurs no model cost.
+
+## MCP contract-diff validation
+
+Date: August 30, 2026
+
+The provider-free contract-diff implementation was checked with:
+
+- 78 passing tests across the complete project suite;
+- Ruff static analysis and strict MyPy type checking;
+- an offline CLI comparison of the included baseline and candidate scan artifacts;
+- expected exit code `0` at the default `breaking` threshold;
+- expected exit code `1` at the strict `risky` threshold;
+- validation of the emitted `mendpact.contract-diff.v1` JSON report.
+
+The example comparison reports one risky tool-description change, one compatible optional
+argument addition, one compatible server-version change, and one affected behavior scenario.
+No MCP server, model-provider request, API key, or paid operation is needed for this test.
+
+## Unified guard validation
+
+Date: August 30, 2026
+
+The guard workflow was exercised against the independently running local MCP fixture. One
+command scanned the two-tool catalog, compared it with the committed fixture baseline, mapped a
+risky `read_status` description change to `read-api-status`, and replayed only that scenario.
+
+The emitted `mendpact.guard.v1` report passed all three configured stages. The final automated
+suite contained 87 passing tests, with Ruff and strict MyPy also passing. The local integration
+made no model-provider request, executed no MCP tool, used no API key, and incurred no provider
+cost.
+
+## Composite GitHub Action validation
+
+Date: August 30, 2026
+
+The backward-compatible Action upgrade was checked with 91 passing project tests, including
+quoted scan and guard argument construction, paths containing spaces, incomplete guard input,
+unknown modes, and invalid boolean values. Bash syntax validation, strict MyPy, Ruff, and YAML
+metadata parsing also passed.
+
+The same Action runner script used by `action.yml` completed a real local guard run against the
+fixture and emitted a passing `mendpact.guard.v1` report. The repository CI invokes the composite
+Action through `uses: ./`, and that hosted run passed before merge.
+
+The immutable `v0.1.0` GitHub release was published and then exercised through
+`adhodari03/mendpact@v0.1.0` by the dedicated release-smoke workflow on August 31, 2026. The
+published Action completed guard mode successfully and produced the expected JSON artifact. This
+validated the public release reference without contacting a model provider or executing an MCP
+tool.
+
+## PR-native GitHub feedback validation
+
+Date: August 31, 2026
+
+The `v0.2.0` implementation renders scan and guard JSON into GitHub job summaries and bounded
+annotations. Untrusted report values and workflow-command characters are escaped, target URL
+credentials and query parameters are omitted, and presentation failures cannot change the
+underlying MendPact result.
+
+The implementation passed 95 project tests, Ruff, strict MyPy, YAML parsing, and a provider-free
+local guard run through the Action shell path. That run passed its scan, contract, and affected
+behavior stages, then rendered the stage table, one risky contract change, affected scenario,
+and deterministic scan findings into the expected summary.

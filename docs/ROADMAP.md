@@ -22,14 +22,40 @@
 - [x] trace replay without a live model call
 - [x] export live decisions for deterministic replay
 
-## Milestone 0.3 — cross-provider matrix
+## Milestone 0.3 — contract intelligence
+
+- [x] versioned MCP contract diff reports
+- [x] capability addition, removal, and metadata classification
+- [x] deterministic JSON Schema compatibility rules
+- [x] behavior-scenario blast-radius mapping
+- [x] CI thresholds and offline report comparison
+
+## Milestone 0.4 — unified CI guard
+
+- [x] single-scan guard orchestration
+- [x] affected-scenario replay selection
+- [x] versioned composite guard report
+- [x] deterministic CI smoke workflow
+- [x] backward-compatible scan and guard GitHub Action modes
+- [x] report and candidate-scan Action outputs
+- [x] PR-native GitHub job summaries and bounded annotations
+
+## Milestone 0.5 — production adoption
+
+- [x] versioned policy-as-code with production and local profiles
+- [x] strict-policy negative CI test
+- [x] controlled, expiring waivers with a 14-day maximum
+- one-command project initialization
+- authenticated production targets and OAuth metadata checks
+
+## Milestone 0.6 — cross-provider matrix
 
 - Anthropic and Gemini drivers
 - provider and model snapshots
 - semantic grading calibrated against human labels
 - compatibility diff between agent versions and model versions
 
-## Milestone 0.4 — hosted beta
+## Milestone 0.7 — hosted beta
 
 - projects, authentication, and encrypted bring-your-own-key storage
 - scheduled scans and GitHub checks

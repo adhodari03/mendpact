@@ -12,12 +12,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
       - name: Install
@@ -28,6 +28,13 @@ jobs:
         run: python -m mypy src
       - name: Test
         run: python -m pytest --cov=mendpact --cov-report=term-missing
+      - name: MCP contract diff smoke test
+        run: >-
+          mendpact diff
+          examples/contracts/baseline-scan.json
+          examples/contracts/candidate-scan.json
+          --scenario examples/scenarios/read-status.json
+          --output contract-diff-report.json
       - name: Start MCP fixture
         run: |
           python -m uvicorn examples.fixture_server:app \
@@ -52,6 +59,120 @@ jobs:
           --allow-private
           --allow-insecure-http
           --output behavior-report.json
+      - name: Unified MCP guard Action smoke test
+        id: mendpact-guard
+        uses: ./
+        with:
+          mode: guard
+          target: http://127.0.0.1:8000/mcp
+          baseline: examples/guard/baseline-scan.json
+          scenario: examples/scenarios/read-status.json
+          replay: examples/replays/read-status.json
+          policy: examples/policies/local-smoke.toml
+          output: guard-report.json
+      - name: Verify MendPact Action outputs
+        shell: bash
+        env:
+          MENDPACT_REPORT: ${{ steps.mendpact-guard.outputs.report }}
+          MENDPACT_MODE: ${{ steps.mendpact-guard.outputs.mode }}
+        run: |
+          test "${MENDPACT_REPORT}" = "guard-report.json"
+          test "${MENDPACT_MODE}" = "guard"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("guard-report.json").read_text(encoding="utf-8"))
+          assert report["policy"]["name"] == "local-smoke-fixture"
+          assert report["policy"]["profile"] == "local"
+          PY
+      - name: Verify strict policy blocks risky fixture
+        shell: bash
+        run: |
+          set +e
+          mendpact guard http://127.0.0.1:8000/mcp \
+            --baseline examples/guard/baseline-scan.json \
+            --scenario examples/scenarios/read-status.json \
+            --replay examples/replays/read-status.json \
+            --policy examples/policies/local-strict.toml \
+            --output strict-policy-report.json
+          exit_code=$?
+          set -e
+
+          test "${exit_code}" -eq 1
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("strict-policy-report.json").read_text(encoding="utf-8"))
+          assert report["status"] == "failed"
+          assert report["policy"]["scan_fail_on"] == "high"
+          assert report["policy"]["contract_fail_on"] == "risky"
+          assert report["summary"]["scan_status"] == "failed"
+          assert report["summary"]["contract_status"] == "failed"
+          assert report["summary"]["behavior_status"] == "passed"
+          PY
+      - name: Verify controlled waivers are visible and time bounded
+        shell: bash
+        env:
+          WAIVER_POLICY: ${{ runner.temp }}/mendpact-waiver.toml
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import UTC, datetime, timedelta
+          from pathlib import Path
+
+          approved = datetime.now(UTC).date()
+          expires = approved + timedelta(days=14)
+          Path(os.environ["WAIVER_POLICY"]).write_text(
+              f'''schema_version = "mendpact.policy.v1"
+          name = "local-waiver-fixture"
+          profile = "local"
+          scan_fail_on = "high"
+          contract_fail_on = "risky"
+          allow_private = true
+          allow_insecure_http = true
+
+          [[waivers]]
+          rule_id = "MP-MCP-004"
+          subject = "tool:delete_project"
+          reason = "Temporary exception for the isolated CI fixture."
+          approved_by = "mendpact-ci"
+          approved_on = {approved.isoformat()}
+          expires_on = {expires.isoformat()}
+
+          [[waivers]]
+          rule_id = "MP-DIFF-003"
+          subject = "tool:read_status"
+          reason = "Temporary exception for the isolated CI fixture."
+          approved_by = "mendpact-ci"
+          approved_on = {approved.isoformat()}
+          expires_on = {expires.isoformat()}
+          ''',
+              encoding="utf-8",
+          )
+          PY
+
+          mendpact guard http://127.0.0.1:8000/mcp \
+            --baseline examples/guard/baseline-scan.json \
+            --scenario examples/scenarios/read-status.json \
+            --replay examples/replays/read-status.json \
+            --policy "${WAIVER_POLICY}" \
+            --output waiver-policy-report.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("waiver-policy-report.json").read_text(encoding="utf-8"))
+          assert report["status"] == "passed"
+          assert len(report["policy"]["waivers"]) == 2
+          assert all(item["status"] == "active" for item in report["policy"]["waivers"])
+          assert report["scan"]["summary"]["waived_finding_count"] == 1
+          assert report["contract_diff"]["summary"]["waived_change_count"] == 1
+          assert report["scan"]["findings"][0]["waiver"] is not None
+          assert report["contract_diff"]["changes"][0]["waiver"] is not None
+          PY
       - name: MCP conformance smoke test
         run: >-
           mendpact conformance
@@ -61,8 +182,36 @@ jobs:
           --output conformance-report.json
       - name: Upload conformance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mendpact-conformance-report
           path: conformance-report.json
+          if-no-files-found: ignore
+      - name: Upload contract diff report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-contract-diff-report
+          path: contract-diff-report.json
+          if-no-files-found: ignore
+      - name: Upload guard report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-guard-report
+          path: guard-report.json
+          if-no-files-found: ignore
+      - name: Upload strict policy report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-strict-policy-report
+          path: strict-policy-report.json
+          if-no-files-found: ignore
+      - name: Upload waiver policy report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-waiver-policy-report
+          path: waiver-policy-report.json
           if-no-files-found: ignore

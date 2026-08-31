@@ -19,13 +19,21 @@ from mendpact.behavior import (
     replay_plan_from_report,
 )
 from mendpact.conformance import run_server_conformance
-from mendpact.domain import BehaviorThresholds, ScanStatus, Severity
+from mendpact.contract_diff import diff_scan_reports, load_scan_report
+from mendpact.domain import (
+    BehaviorThresholds,
+    ContractImpact,
+    ScanStatus,
+    Severity,
+)
 from mendpact.drivers.base import ModelDriver
 from mendpact.drivers.openai import (
     OpenAIDriverConfigurationError,
     OpenAIResponsesDriver,
 )
 from mendpact.drivers.replay import ReplayDriver
+from mendpact.guard import guard_mcp_url
+from mendpact.policy import PolicyConfigurationError, load_policy, target_policy
 from mendpact.regression import (
     baseline_from_report,
     compare_to_baseline,
@@ -34,10 +42,14 @@ from mendpact.regression import (
 from mendpact.reporting import (
     render_behavior_report,
     render_conformance_report,
+    render_contract_diff_report,
+    render_guard_report,
     render_report,
     write_behavior_baseline,
     write_behavior_report,
     write_conformance_report,
+    write_contract_diff_report,
+    write_guard_report,
     write_json_report,
     write_replay_plan,
 )
@@ -100,6 +112,22 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
+def _reject_policy_overrides(ctx: typer.Context, option_names: tuple[str, ...]) -> None:
+    explicit = [
+        f"--{name.replace('_', '-')}"
+        for name in option_names
+        if (
+            (source := ctx.get_parameter_source(name)) is not None
+            and source.name == "COMMANDLINE"
+        )
+    ]
+    if explicit:
+        raise ValueError(
+            "--policy cannot be combined with policy-controlled options: "
+            + ", ".join(explicit)
+        )
+
+
 @app.callback()
 def main(
     version: Annotated[
@@ -112,6 +140,7 @@ def main(
 
 @app.command()
 def scan(
+    ctx: typer.Context,
     target: Annotated[str, typer.Argument(help="Remote Streamable HTTP MCP endpoint")],
     output: Annotated[
         Path | None,
@@ -129,18 +158,47 @@ def scan(
         bool,
         typer.Option(help="Allow plaintext HTTP for deliberate local development"),
     ] = False,
+    policy_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--policy",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Versioned TOML policy that owns thresholds and target allowances",
+        ),
+    ] = None,
 ) -> None:
     """Discover and deterministically inspect a remote MCP endpoint."""
+
+    try:
+        applied_policy = load_policy(policy_file) if policy_file is not None else None
+        if applied_policy is not None:
+            _reject_policy_overrides(
+                ctx,
+                ("fail_on", "allow_private", "allow_insecure_http"),
+            )
+    except (PolicyConfigurationError, ValueError) as exc:
+        console.print(f"[red]Could not configure scan policy:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    failure_threshold = applied_policy.scan_fail_on if applied_policy else fail_on
+    network_policy = (
+        target_policy(applied_policy)
+        if applied_policy
+        else TargetPolicy(
+            allow_private=allow_private,
+            allow_insecure_http=allow_insecure_http,
+        )
+    )
 
     report = anyio.run(
         partial(
             scan_mcp_url,
             target,
-            failure_threshold=fail_on,
-            policy=TargetPolicy(
-                allow_private=allow_private,
-                allow_insecure_http=allow_insecure_http,
-            ),
+            failure_threshold=failure_threshold,
+            policy=network_policy,
+            applied_policy=applied_policy,
         )
     )
     render_report(report, console)
@@ -152,6 +210,245 @@ def scan(
             console.print(f"[red]Could not write report:[/] {exc}")
             raise typer.Exit(code=2) from exc
         console.print(f"JSON report: {output}")
+
+    if report.status == ScanStatus.ERROR:
+        raise typer.Exit(code=2)
+    if report.status == ScanStatus.FAILED:
+        raise typer.Exit(code=1)
+
+
+@app.command("diff")
+def contract_diff(
+    baseline: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Baseline MendPact scan report",
+        ),
+    ],
+    candidate: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Candidate MendPact scan report",
+        ),
+    ],
+    scenario: Annotated[
+        Path | None,
+        typer.Option(
+            "--scenario",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Optional behavior suite used to calculate blast radius",
+        ),
+    ] = None,
+    fail_on: Annotated[
+        ContractImpact,
+        typer.Option(
+            "--fail-on",
+            case_sensitive=False,
+            help="Minimum compatibility impact that fails CI",
+        ),
+    ] = ContractImpact.BREAKING,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Write the contract diff JSON report"),
+    ] = None,
+) -> None:
+    """Compare two scan artifacts and report MCP contract changes."""
+
+    try:
+        baseline_report = load_scan_report(baseline)
+        candidate_report = load_scan_report(candidate)
+        behavior_suite = load_behavior_suite(scenario) if scenario is not None else None
+        report = diff_scan_reports(
+            baseline_report,
+            candidate_report,
+            suite=behavior_suite,
+            failure_threshold=fail_on,
+        )
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]Could not compare MCP contracts:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    render_contract_diff_report(report, console)
+    if output is not None:
+        try:
+            write_contract_diff_report(report, output)
+        except OSError as exc:
+            console.print(f"[red]Could not write contract diff report:[/] {exc}")
+            raise typer.Exit(code=2) from exc
+        console.print(f"JSON report: {output}")
+
+    if report.status == ScanStatus.FAILED:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def guard(
+    ctx: typer.Context,
+    target: Annotated[str, typer.Argument(help="Remote Streamable HTTP MCP endpoint")],
+    baseline: Annotated[
+        Path,
+        typer.Option(
+            "--baseline",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Committed MendPact scan used as the contract baseline",
+        ),
+    ],
+    scenario: Annotated[
+        Path | None,
+        typer.Option(
+            "--scenario",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Behavior suite used to calculate and replay the blast radius",
+        ),
+    ] = None,
+    replay: Annotated[
+        Path | None,
+        typer.Option(
+            "--replay",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Recorded decisions for affected behavior scenarios",
+        ),
+    ] = None,
+    repetitions: Annotated[
+        int,
+        typer.Option(min=1, max=100, help="Replay decisions per affected scenario"),
+    ] = 1,
+    scan_fail_on: Annotated[
+        Severity,
+        typer.Option(
+            "--scan-fail-on",
+            case_sensitive=False,
+            help="Minimum deterministic finding severity that fails CI",
+        ),
+    ] = Severity.HIGH,
+    contract_fail_on: Annotated[
+        ContractImpact,
+        typer.Option(
+            "--contract-fail-on",
+            case_sensitive=False,
+            help="Minimum contract-change impact that fails CI",
+        ),
+    ] = ContractImpact.BREAKING,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Write the unified guard JSON report"),
+    ] = None,
+    save_scan: Annotated[
+        Path | None,
+        typer.Option(help="Save the newly discovered scan as a candidate artifact"),
+    ] = None,
+    allow_private: Annotated[
+        bool,
+        typer.Option(help="Allow private/loopback targets for deliberate local development"),
+    ] = False,
+    allow_insecure_http: Annotated[
+        bool,
+        typer.Option(help="Allow plaintext HTTP for deliberate local development"),
+    ] = False,
+    policy_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--policy",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Versioned TOML policy that owns thresholds and target allowances",
+        ),
+    ] = None,
+) -> None:
+    """Run scan, contract diff, and affected deterministic replays in one CI command."""
+
+    try:
+        applied_policy = load_policy(policy_file) if policy_file is not None else None
+        if applied_policy is not None:
+            _reject_policy_overrides(
+                ctx,
+                (
+                    "scan_fail_on",
+                    "contract_fail_on",
+                    "allow_private",
+                    "allow_insecure_http",
+                ),
+            )
+        if (scenario is None) != (replay is None):
+            raise ValueError("--scenario and --replay must be supplied together.")
+        input_paths = {
+            path.resolve()
+            for path in (baseline, scenario, replay)
+            if path is not None
+        }
+        destinations = [
+            ("--output", output.resolve()) if output is not None else None,
+            ("--save-scan", save_scan.resolve()) if save_scan is not None else None,
+        ]
+        resolved_destinations = [item for item in destinations if item is not None]
+        for option, destination in resolved_destinations:
+            if destination in input_paths:
+                raise ValueError(f"{option} cannot overwrite a guard input file.")
+        if len({path for _, path in resolved_destinations}) != len(
+            resolved_destinations
+        ):
+            raise ValueError("--output and --save-scan must use different paths.")
+        baseline_report = load_scan_report(baseline)
+        behavior_suite = load_behavior_suite(scenario) if scenario is not None else None
+        replay_plan = load_replay_plan(replay) if replay is not None else None
+    except (OSError, PolicyConfigurationError, ValueError) as exc:
+        console.print(f"[red]Could not configure guard:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    effective_scan_fail_on = applied_policy.scan_fail_on if applied_policy else scan_fail_on
+    effective_contract_fail_on = (
+        applied_policy.contract_fail_on if applied_policy else contract_fail_on
+    )
+    network_policy = (
+        target_policy(applied_policy)
+        if applied_policy
+        else TargetPolicy(
+            allow_private=allow_private,
+            allow_insecure_http=allow_insecure_http,
+        )
+    )
+
+    report = anyio.run(
+        partial(
+            guard_mcp_url,
+            target,
+            baseline_report,
+            suite=behavior_suite,
+            replay=replay_plan,
+            repetitions=repetitions,
+            scan_failure_threshold=effective_scan_fail_on,
+            contract_failure_threshold=effective_contract_fail_on,
+            policy=network_policy,
+            applied_policy=applied_policy,
+        )
+    )
+    render_guard_report(report, console)
+
+    try:
+        if output is not None:
+            write_guard_report(report, output)
+            console.print(f"JSON report: {output}")
+        if save_scan is not None:
+            write_json_report(report.scan, save_scan)
+            console.print(f"Candidate scan: {save_scan}")
+    except OSError as exc:
+        console.print(f"[red]Could not write guard artifacts:[/] {exc}")
+        raise typer.Exit(code=2) from exc
 
     if report.status == ScanStatus.ERROR:
         raise typer.Exit(code=2)

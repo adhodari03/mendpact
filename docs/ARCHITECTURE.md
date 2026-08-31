@@ -43,6 +43,22 @@ raw trial evidence, threshold findings, and a one-sided pass-rate statistic; con
 thresholds determine the exit code. A failed comparison cannot be promoted accidentally when a
 baseline is loaded and saved in the same command.
 
+Contract intelligence compares two completed scan artifacts rather than contacting their
+targets again. It matches capabilities by stable graph node ID, classifies structural and schema
+changes, and joins tool changes with behavior expectations to calculate a scenario blast radius.
+This makes compatibility review reproducible in pull requests and independent of model-provider
+availability.
+
+The guard orchestrator is the CI composition boundary. It scans once, feeds the resulting graph
+to contract comparison, selects affected scenarios, and evaluates deterministic replays against
+that same in-memory graph. The versioned guard report embeds each stage's evidence instead of
+reducing the result to an opaque score.
+
+The root composite GitHub Action is a thin distribution adapter. It validates Action inputs,
+constructs quoted CLI arguments without shell evaluation, installs the referenced repository
+revision, and exposes generated artifact paths to the consuming workflow. Scan remains the
+default mode so existing Action configurations continue to work.
+
 The separate `mendpact conformance` path invokes the pinned official MCP conformance CLI as a
 child process. It validates the target first, runs the upstream package without a shell, reads
 the emitted `checks.json` files from an ephemeral directory, and normalizes them into the
@@ -60,6 +76,8 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `argument_matching.py` applies scenario-approved string normalization to copied arguments.
 - `grading.py` validates selected tools, arguments, and behavioral expectations.
 - `regression.py` creates versioned baselines and evaluates compatibility thresholds.
+- `contract_diff.py` compares scan graphs and maps changes to affected behavior scenarios.
+- `guard.py` composes scanning, contract comparison, and affected replay evaluation.
 - `reporting.py` renders stable machine and human interfaces.
 - `security/` rejects unsafe targets before network access.
 - `conformance.py` owns the pinned external runner boundary and result normalization.

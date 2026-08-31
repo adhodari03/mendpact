@@ -1,0 +1,32 @@
+# Copy this file into .github/workflows/ in the consuming repository.
+name: MCP contract guard
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  mendpact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - id: mendpact
+        uses: adhodari03/mendpact@v0.2.0
+        with:
+          mode: guard
+          target: https://your-server.example/mcp
+          baseline: mendpact/baseline-scan.json
+          scenario: mendpact/scenarios.json
+          replay: mendpact/replay.json
+          output: mendpact-guard-report.json
+      - if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-guard-report
+          path: mendpact-guard-report.json
+          if-no-files-found: ignore

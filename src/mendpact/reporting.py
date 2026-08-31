@@ -12,6 +12,9 @@ from mendpact.domain import (
     BehaviorReport,
     ConformanceCheckStatus,
     ConformanceReport,
+    ContractDiffReport,
+    ContractImpact,
+    GuardReport,
     RegressionImpact,
     ReplayPlan,
     ScanReport,
@@ -31,6 +34,14 @@ def write_behavior_report(report: BehaviorReport, destination: Path) -> None:
     destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
 
 
+def write_contract_diff_report(report: ContractDiffReport, destination: Path) -> None:
+    destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+
+def write_guard_report(report: GuardReport, destination: Path) -> None:
+    destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+
 def write_behavior_baseline(baseline: BehaviorBaseline, destination: Path) -> None:
     destination.write_text(baseline.model_dump_json(indent=2), encoding="utf-8")
 
@@ -47,6 +58,12 @@ def render_report(report: ScanReport, console: Console) -> None:
     }[report.status]
     console.print(f"MendPact scan: [{status_style}]{report.status.value.upper()}[/]")
     console.print(f"Target: {report.target}")
+    if report.policy:
+        console.print(
+            f"Policy: {report.policy.name} ({report.policy.profile.value}) | "
+            f"Scan: {report.policy.scan_fail_on.value} | "
+            f"Contract: {report.policy.contract_fail_on.value}"
+        )
 
     if report.errors:
         for error in report.errors:
@@ -70,12 +87,18 @@ def render_report(report: ScanReport, console: Console) -> None:
     table.add_column("Rule", width=12)
     table.add_column("Subject", overflow="fold")
     table.add_column("Finding", overflow="fold")
+    table.add_column("Policy", overflow="fold")
     for finding in report.findings:
         table.add_row(
             finding.severity.value.upper(),
             finding.rule_id,
             finding.subject or "-",
             f"{finding.title}: {finding.message}",
+            (
+                f"waived until {finding.waiver.expires_on}"
+                if finding.waiver
+                else "enforced"
+            ),
         )
     console.print(table)
 
@@ -124,6 +147,87 @@ def render_conformance_report(report: ConformanceReport, console: Console) -> No
             check.error_message or check.description,
         )
     console.print(table)
+
+
+def render_contract_diff_report(report: ContractDiffReport, console: Console) -> None:
+    status_style = {
+        ScanStatus.PASSED: "bold green",
+        ScanStatus.FAILED: "bold red",
+        ScanStatus.ERROR: "bold red",
+    }[report.status]
+    console.print(f"MendPact contract diff: [{status_style}]{report.status.value.upper()}[/]")
+    console.print(f"Baseline: {report.baseline_target}")
+    console.print(f"Candidate: {report.candidate_target}")
+    counts = report.summary.changes_by_impact
+    console.print(
+        f"Changes: {report.summary.change_count} | "
+        f"Breaking: {counts[ContractImpact.BREAKING.value]} | "
+        f"Risky: {counts[ContractImpact.RISKY.value]} | "
+        f"Compatible: {counts[ContractImpact.COMPATIBLE.value]} | "
+        f"Waived: {report.summary.waived_change_count} | "
+        f"Affected scenarios: {report.summary.affected_scenario_count}"
+    )
+
+    if not report.changes:
+        console.print("[green]No contract changes.[/]")
+        return
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Impact", width=11)
+    table.add_column("Rule", width=12)
+    table.add_column("Subject", overflow="fold")
+    table.add_column("Change", overflow="fold")
+    table.add_column("Scenarios", overflow="fold")
+    table.add_column("Policy", overflow="fold")
+    styles = {
+        ContractImpact.BREAKING: "red",
+        ContractImpact.RISKY: "yellow",
+        ContractImpact.COMPATIBLE: "green",
+    }
+    for change in report.changes:
+        table.add_row(
+            f"[{styles[change.impact]}]{change.impact.value.upper()}[/]",
+            change.rule_id,
+            change.subject,
+            change.message,
+            ", ".join(change.affected_scenarios) or "-",
+            (
+                f"waived until {change.waiver.expires_on}"
+                if change.waiver
+                else "enforced"
+            ),
+        )
+    console.print(table)
+
+
+def render_guard_report(report: GuardReport, console: Console) -> None:
+    status_style = {
+        ScanStatus.PASSED: "bold green",
+        ScanStatus.FAILED: "bold red",
+        ScanStatus.ERROR: "bold red",
+    }[report.status]
+    summary = report.summary
+    console.print(f"MendPact guard: [{status_style}]{report.status.value.upper()}[/]")
+    console.print(f"Target: {report.target}")
+    if report.policy:
+        console.print(
+            f"Policy: {report.policy.name} ({report.policy.profile.value}) | "
+            f"Scan: {report.policy.scan_fail_on.value} | "
+            f"Contract: {report.policy.contract_fail_on.value}"
+        )
+    console.print(
+        f"Scan: {summary.scan_status.value} | "
+        f"Contract: {summary.contract_status.value if summary.contract_status else 'skipped'} | "
+        f"Behavior: {summary.behavior_status.value if summary.behavior_status else 'skipped'}"
+    )
+    console.print(
+        f"Affected scenarios: {summary.affected_scenario_count} | "
+        f"Evaluated scenarios: {summary.evaluated_scenario_count}"
+    )
+    if report.behavior_skipped_reason:
+        console.print(f"Behavior replay: {report.behavior_skipped_reason}")
+    for error in report.errors:
+        console.print(f"[red]Error:[/] {error}")
 
 
 def render_behavior_report(report: BehaviorReport, console: Console) -> None:

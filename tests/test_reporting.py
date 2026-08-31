@@ -5,6 +5,11 @@ from mendpact.domain import (
     BehaviorBaseline,
     BehaviorReport,
     ConformanceReport,
+    ContractDiffReport,
+    ContractDiffSummary,
+    ContractImpact,
+    GuardReport,
+    GuardSummary,
     ReplayDecision,
     ReplayPlan,
     ScanReport,
@@ -15,6 +20,8 @@ from mendpact.reporting import (
     write_behavior_baseline,
     write_behavior_report,
     write_conformance_report,
+    write_contract_diff_report,
+    write_guard_report,
     write_json_report,
     write_replay_plan,
 )
@@ -89,6 +96,48 @@ def test_writes_versioned_behavior_baseline(tmp_path: Path) -> None:
     payload = json.loads(destination.read_text(encoding="utf-8"))
     assert payload["schema_version"] == "mendpact.baseline.v1"
     assert payload["source_run_id"] == "run-1"
+
+
+def test_writes_versioned_contract_diff_report(tmp_path: Path) -> None:
+    destination = tmp_path / "contract-diff.json"
+    report = ContractDiffReport(
+        baseline_scan_id="baseline-1",
+        candidate_scan_id="candidate-1",
+        baseline_target="https://baseline.example/mcp",
+        candidate_target="https://candidate.example/mcp",
+        status=ScanStatus.PASSED,
+        failure_threshold=ContractImpact.BREAKING,
+        summary=ContractDiffSummary(
+            change_count=0,
+            changes_by_impact={impact.value: 0 for impact in ContractImpact},
+            affected_scenario_count=0,
+        ),
+    )
+
+    write_contract_diff_report(report, destination)
+
+    payload = json.loads(destination.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "mendpact.contract-diff.v1"
+
+
+def test_writes_versioned_guard_report(tmp_path: Path) -> None:
+    destination = tmp_path / "guard.json"
+    scan = ScanReport(
+        target="https://candidate.example/mcp",
+        status=ScanStatus.PASSED,
+        failure_threshold=Severity.HIGH,
+    )
+    report = GuardReport(
+        target=scan.target,
+        status=ScanStatus.PASSED,
+        scan=scan,
+        summary=GuardSummary(scan_status=ScanStatus.PASSED),
+    )
+
+    write_guard_report(report, destination)
+
+    payload = json.loads(destination.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "mendpact.guard.v1"
 
 
 def test_writes_versioned_replay_plan(tmp_path: Path) -> None:
