@@ -1,0 +1,96 @@
+name: MendPact v0.1.0 release smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test/release-v0.1.0
+    paths:
+      - .github/workflows/release-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  released-action:
+    name: Test published GitHub Action
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out test repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install fixture dependencies
+        run: python -m pip install -e .
+
+      - name: Start MCP fixture
+        run: |
+          python -m uvicorn examples.fixture_server:app \
+            --host 127.0.0.1 \
+            --port 8000 \
+            > "${RUNNER_TEMP}/mendpact-fixture.log" 2>&1 &
+
+          for attempt in {1..30}; do
+            if curl --silent --output /dev/null http://127.0.0.1:8000/mcp; then
+              exit 0
+            fi
+            sleep 0.5
+          done
+
+          cat "${RUNNER_TEMP}/mendpact-fixture.log"
+          exit 1
+
+      - name: Run published MendPact Action
+        id: mendpact
+        uses: adhodari03/mendpact@v0.1.0
+        with:
+          mode: guard
+          target: http://127.0.0.1:8000/mcp
+          baseline: examples/guard/baseline-scan.json
+          scenario: examples/scenarios/read-status.json
+          replay: examples/replays/read-status.json
+          scan-fail-on: critical
+          allow-private: "true"
+          allow-insecure-http: "true"
+          output: release-smoke-guard-report.json
+
+      - name: Verify released Action report
+        env:
+          MENDPACT_REPORT: ${{ steps.mendpact.outputs.report }}
+          MENDPACT_MODE: ${{ steps.mendpact.outputs.mode }}
+        run: |
+          test "${MENDPACT_REPORT}" = "release-smoke-guard-report.json"
+          test "${MENDPACT_MODE}" = "guard"
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(
+              Path("release-smoke-guard-report.json").read_text(encoding="utf-8")
+          )
+
+          assert report["schema_version"] == "mendpact.guard.v1"
+          assert report["status"] == "passed"
+          assert report["summary"]["scan_status"] == "passed"
+          assert report["summary"]["contract_status"] == "passed"
+          assert report["summary"]["behavior_status"] == "passed"
+          assert report["summary"]["affected_scenario_count"] == 1
+          assert report["summary"]["evaluated_scenario_count"] == 1
+
+          print("Published MendPact v0.1.0 Action verified successfully.")
+          PY
+
+      - name: Upload release smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mendpact-v0.1.0-release-smoke
+          path: release-smoke-guard-report.json
+          if-no-files-found: ignore
