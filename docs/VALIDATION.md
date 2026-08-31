@@ -125,3 +125,17 @@ The emitted `mendpact.guard.v1` report passed all three configured stages. The f
 suite contained 87 passing tests, with Ruff and strict MyPy also passing. The local integration
 made no model-provider request, executed no MCP tool, used no API key, and incurred no provider
 cost.
+
+## Composite GitHub Action validation
+
+Date: August 30, 2026
+
+The backward-compatible Action upgrade was checked with 91 passing project tests, including
+quoted scan and guard argument construction, paths containing spaces, incomplete guard input,
+unknown modes, and invalid boolean values. Bash syntax validation, strict MyPy, Ruff, and YAML
+metadata parsing also passed.
+
+The same Action runner script used by `action.yml` completed a real local guard run against the
+fixture and emitted a passing `mendpact.guard.v1` report. The repository CI now invokes the
+composite Action through `uses: ./`; that hosted-run result must pass on the pull request before
+merge. No Marketplace listing or `v0.1.0` release tag has been published yet.

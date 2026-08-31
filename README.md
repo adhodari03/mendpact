@@ -180,6 +180,29 @@ status. The workflow does not execute MCP tools or contact a model provider, so 
 deterministic and free to run. See the [guard reference](docs/GUARD.md) for its stage and exit-code
 policy.
 
+## GitHub Action
+
+MendPact can run as a composite GitHub Action. Scan mode remains the default for backward
+compatibility, while guard mode runs the complete scan, contract, and affected-replay workflow.
+
+```yaml
+- id: mendpact
+  uses: adhodari03/mendpact@v0.1.0
+  with:
+    mode: guard
+    target: https://your-server.example/mcp
+    baseline: mendpact/baseline-scan.json
+    scenario: mendpact/scenarios.json
+    replay: mendpact/replay.json
+    output: mendpact-guard-report.json
+```
+
+The `v0.1.0` reference becomes available when the first alpha Action release is published. Until
+then, test with `main` or pin an exact full commit SHA. The Action exposes the report and
+candidate-scan paths as outputs so the consuming workflow controls artifact upload and
+retention. See the [GitHub Action guide](docs/GITHUB_ACTION.md) for complete scan and guard
+workflows.
+
 ## MCP conformance
 
 MendPact also wraps the official MCP server conformance framework, pinned to version `0.1.16`.
