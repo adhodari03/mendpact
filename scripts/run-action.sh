@@ -5,6 +5,7 @@ mode="${MENDPACT_MODE:-scan}"
 target="${MENDPACT_TARGET:-}"
 output="${MENDPACT_OUTPUT:-mendpact-report.json}"
 policy="${MENDPACT_POLICY:-}"
+auth_token_env="${MENDPACT_AUTH_TOKEN_ENV:-}"
 allow_private="${MENDPACT_ALLOW_PRIVATE:-false}"
 allow_insecure_http="${MENDPACT_ALLOW_INSECURE_HTTP:-false}"
 
@@ -42,6 +43,10 @@ validate_boolean "${allow_insecure_http}" --allow-insecure-http
 if [[ -n "${policy}" ]] && \
    [[ "${allow_private}" == "true" || "${allow_insecure_http}" == "true" ]]; then
   echo "MendPact Action: policy cannot be combined with target allowance inputs." >&2
+  exit 2
+fi
+if [[ -n "${policy}" && -n "${auth_token_env}" ]]; then
+  echo "MendPact Action: policy cannot be combined with auth-token-env." >&2
   exit 2
 fi
 
@@ -96,6 +101,9 @@ esac
 if [[ -n "${policy}" ]]; then
   command_args+=(--policy "${policy}")
 else
+  if [[ -n "${auth_token_env}" ]]; then
+    command_args+=(--auth-token-env "${auth_token_env}")
+  fi
   append_boolean_flag "${allow_private}" --allow-private
   append_boolean_flag "${allow_insecure_http}" --allow-insecure-http
 fi

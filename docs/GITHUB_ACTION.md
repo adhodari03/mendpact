@@ -35,6 +35,26 @@ empty baseline directory and a labeled example scenario but does not contact the
 baseline, or enable guard mode. Use `--force` only after reviewing the generated-file collisions
 reported by the command.
 
+## Authenticated target
+
+Keep a bearer token in GitHub Actions secrets and pass it to the Action only through the named
+environment variable referenced by policy:
+
+```yaml
+- id: mendpact
+  uses: adhodari03/mendpact@v0.3.0
+  env:
+    MENDPACT_ACCESS_TOKEN: ${{ secrets.MENDPACT_ACCESS_TOKEN }}
+  with:
+    target: https://api.example.com/mcp
+    policy: mendpact.toml
+    output: mendpact-report.json
+```
+
+For runs without policy, add `auth-token-env: MENDPACT_ACCESS_TOKEN`. The Action passes only that
+name to the CLI. The secret value stays in the environment and is never constructed as a command
+argument. See [authenticated targets](AUTHENTICATION.md) for OAuth metadata checks and limitations.
+
 ## Scan mode
 
 ```yaml

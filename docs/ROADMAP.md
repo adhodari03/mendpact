@@ -46,7 +46,7 @@
 - [x] strict-policy negative CI test
 - [x] controlled, expiring waivers with a 14-day maximum
 - [x] one-command project initialization
-- authenticated production targets and OAuth metadata checks
+- [x] authenticated production targets and OAuth metadata checks
 
 ## Milestone 0.6 — cross-provider matrix
 

@@ -169,3 +169,31 @@ def test_action_script_rejects_policy_with_target_allowances(tmp_path: Path) -> 
 
     assert result.returncode == 2
     assert "policy cannot be combined with target allowance inputs" in result.stderr
+
+
+def test_action_script_passes_only_bearer_environment_variable_name(
+    tmp_path: Path,
+) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_TARGET="https://example.com/mcp",
+        MENDPACT_AUTH_TOKEN_ENV="MENDPACT_ACCESS_TOKEN",
+        MENDPACT_ACCESS_TOKEN="secret-value-never-passed-as-an-argument",
+    )
+
+    assert result.returncode == 0
+    arguments = _arguments(tmp_path)
+    assert arguments[-2:] == ["--auth-token-env", "MENDPACT_ACCESS_TOKEN"]
+    assert "secret-value-never-passed-as-an-argument" not in arguments
+
+
+def test_action_script_rejects_policy_with_authentication_input(tmp_path: Path) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_TARGET="https://example.com/mcp",
+        MENDPACT_POLICY="mendpact.toml",
+        MENDPACT_AUTH_TOKEN_ENV="MENDPACT_ACCESS_TOKEN",
+    )
+
+    assert result.returncode == 2
+    assert "policy cannot be combined with auth-token-env" in result.stderr

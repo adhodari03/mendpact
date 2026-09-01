@@ -119,6 +119,28 @@ def _annotation_for_item(
 def _scan_sections(scan: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
     lines: list[str] = []
     annotations: list[Annotation] = []
+    authorization = scan.get("authorization")
+    if isinstance(authorization, dict):
+        lines.extend(
+            [
+                "### OAuth metadata",
+                "",
+                *_table(
+                    ["Status", "Protected resource metadata", "Authorization servers", "Scopes"],
+                    [
+                        [
+                            str(authorization.get("status", "unknown")).replace("_", " ").title(),
+                            _safe_target(
+                                authorization.get("protected_resource_metadata_url")
+                            ),
+                            authorization.get("authorization_servers", []),
+                            authorization.get("scopes_supported", []),
+                        ]
+                    ],
+                ),
+                "",
+            ]
+        )
     summary = scan.get("summary") or {}
     lines.extend(
         [

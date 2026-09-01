@@ -15,6 +15,9 @@ scan_fail_on = "high"
 contract_fail_on = "risky"
 allow_private = false
 allow_insecure_http = false
+
+# Optional: this is an environment-variable name, never a token value.
+bearer_token_env = "MENDPACT_ACCESS_TOKEN"
 ```
 
 The production profile cannot be weakened below `high` scan findings or `risky` contract changes.
@@ -41,6 +44,10 @@ mendpact guard https://api.example/mcp \
 
 Policy-controlled CLI flags cannot be supplied together with `--policy`. This avoids silently
 overriding a reviewed policy at run time.
+
+`bearer_token_env` records where a pre-issued token must be loaded. The variable must exist at run
+time, and only its name is embedded in policy evidence. See the
+[authenticated-target guide](AUTHENTICATION.md) for token and OAuth metadata boundaries.
 
 ## Local policy
 

@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx2
 from mcp import Client
+from mcp.client._transport import TransportStreams
+from mcp.client.streamable_http import streamable_http_client
 
 from mendpact.domain import (
     CapabilityEdge,
@@ -13,6 +17,7 @@ from mendpact.domain import (
     CapabilityNode,
     NodeKind,
 )
+from mendpact.security.auth import BearerAuthentication, redact_authentication
 
 
 def _dump(value: Any) -> dict[str, Any]:
@@ -42,10 +47,27 @@ async def _pages(method: Any) -> AsyncIterator[Any]:
             break
 
 
+@asynccontextmanager
+async def _authenticated_transport(
+    target: str,
+    authentication: BearerAuthentication,
+) -> AsyncIterator[TransportStreams]:
+    async with (
+        httpx2.AsyncClient(
+            headers=authentication.headers,
+            follow_redirects=True,
+            timeout=httpx2.Timeout(30.0, read=300.0),
+        ) as http_client,
+        streamable_http_client(target, http_client=http_client) as streams,
+    ):
+        yield streams
+
+
 async def discover_mcp_target(
     target: str | Any,
     *,
     display_target: str | None = None,
+    authentication: BearerAuthentication | None = None,
 ) -> CapabilityGraph:
     """Discover tools, resources, templates, and prompts exposed by an MCP target."""
 
@@ -53,7 +75,12 @@ async def discover_mcp_target(
     graph = CapabilityGraph(target=target_name)
     server_id = _server_node_id(target_name)
 
-    async with Client(target) as client:
+    client_target = (
+        _authenticated_transport(target, authentication)
+        if isinstance(target, str) and authentication is not None
+        else target
+    )
+    async with Client(client_target, cache=None) as client:
         server_info = client.server_info
         graph.protocol_version = str(client.protocol_version) if client.protocol_version else None
         graph.instructions = client.instructions
@@ -116,7 +143,10 @@ async def discover_mcp_target(
                             ),
                         )
             except Exception as exc:  # pragma: no cover - server interoperability boundary
-                graph.warnings.append(f"Could not list resources: {type(exc).__name__}: {exc}")
+                graph.warnings.append(
+                    "Could not list resources: "
+                    f"{type(exc).__name__}: {redact_authentication(exc, authentication)}"
+                )
 
             try:
                 async for page in _pages(client.list_resource_templates):
@@ -136,7 +166,8 @@ async def discover_mcp_target(
                         )
             except Exception as exc:  # pragma: no cover - server interoperability boundary
                 graph.warnings.append(
-                    f"Could not list resource templates: {type(exc).__name__}: {exc}"
+                    "Could not list resource templates: "
+                    f"{type(exc).__name__}: {redact_authentication(exc, authentication)}"
                 )
 
         if getattr(capabilities, "prompts", None) is not None:
@@ -156,6 +187,9 @@ async def discover_mcp_target(
                             ),
                         )
             except Exception as exc:  # pragma: no cover - server interoperability boundary
-                graph.warnings.append(f"Could not list prompts: {type(exc).__name__}: {exc}")
+                graph.warnings.append(
+                    "Could not list prompts: "
+                    f"{type(exc).__name__}: {redact_authentication(exc, authentication)}"
+                )
 
     return graph

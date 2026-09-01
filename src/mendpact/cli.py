@@ -24,6 +24,7 @@ from mendpact.contract_diff import diff_scan_reports, load_scan_report
 from mendpact.domain import (
     BehaviorThresholds,
     ContractImpact,
+    PolicySnapshot,
     ScanStatus,
     Severity,
 )
@@ -56,6 +57,11 @@ from mendpact.reporting import (
     write_replay_plan,
 )
 from mendpact.scanner import scan_mcp_url
+from mendpact.security.auth import (
+    AuthenticationConfigurationError,
+    BearerAuthentication,
+    load_bearer_authentication,
+)
 from mendpact.security.targets import TargetPolicy
 
 app = typer.Typer(
@@ -128,6 +134,14 @@ def _reject_policy_overrides(ctx: typer.Context, option_names: tuple[str, ...]) 
             "--policy cannot be combined with policy-controlled options: "
             + ", ".join(explicit)
         )
+
+
+def _target_authentication(
+    policy: PolicySnapshot | None,
+    auth_token_env: str | None,
+) -> BearerAuthentication | None:
+    environment_variable = policy.bearer_token_env if policy else auth_token_env
+    return load_bearer_authentication(environment_variable)
 
 
 @app.callback()
@@ -209,6 +223,13 @@ def scan(
             help="Versioned TOML policy that owns thresholds and target allowances",
         ),
     ] = None,
+    auth_token_env: Annotated[
+        str | None,
+        typer.Option(
+            "--auth-token-env",
+            help="Environment variable containing a bearer token; never pass the token itself",
+        ),
+    ] = None,
 ) -> None:
     """Discover and deterministically inspect a remote MCP endpoint."""
 
@@ -217,9 +238,19 @@ def scan(
         if applied_policy is not None:
             _reject_policy_overrides(
                 ctx,
-                ("fail_on", "allow_private", "allow_insecure_http"),
+                (
+                    "fail_on",
+                    "allow_private",
+                    "allow_insecure_http",
+                    "auth_token_env",
+                ),
             )
-    except (PolicyConfigurationError, ValueError) as exc:
+        authentication = _target_authentication(applied_policy, auth_token_env)
+    except (
+        AuthenticationConfigurationError,
+        PolicyConfigurationError,
+        ValueError,
+    ) as exc:
         console.print(f"[red]Could not configure scan policy:[/] {exc}")
         raise typer.Exit(code=2) from exc
 
@@ -240,6 +271,7 @@ def scan(
             failure_threshold=failure_threshold,
             policy=network_policy,
             applied_policy=applied_policy,
+            authentication=authentication,
         )
     )
     render_report(report, console)
@@ -410,6 +442,13 @@ def guard(
             help="Versioned TOML policy that owns thresholds and target allowances",
         ),
     ] = None,
+    auth_token_env: Annotated[
+        str | None,
+        typer.Option(
+            "--auth-token-env",
+            help="Environment variable containing a bearer token; never pass the token itself",
+        ),
+    ] = None,
 ) -> None:
     """Run scan, contract diff, and affected deterministic replays in one CI command."""
 
@@ -423,8 +462,10 @@ def guard(
                     "contract_fail_on",
                     "allow_private",
                     "allow_insecure_http",
+                    "auth_token_env",
                 ),
             )
+        authentication = _target_authentication(applied_policy, auth_token_env)
         if (scenario is None) != (replay is None):
             raise ValueError("--scenario and --replay must be supplied together.")
         input_paths = {
@@ -447,7 +488,12 @@ def guard(
         baseline_report = load_scan_report(baseline)
         behavior_suite = load_behavior_suite(scenario) if scenario is not None else None
         replay_plan = load_replay_plan(replay) if replay is not None else None
-    except (OSError, PolicyConfigurationError, ValueError) as exc:
+    except (
+        AuthenticationConfigurationError,
+        OSError,
+        PolicyConfigurationError,
+        ValueError,
+    ) as exc:
         console.print(f"[red]Could not configure guard:[/] {exc}")
         raise typer.Exit(code=2) from exc
 
@@ -476,6 +522,7 @@ def guard(
             contract_failure_threshold=effective_contract_fail_on,
             policy=network_policy,
             applied_policy=applied_policy,
+            authentication=authentication,
         )
     )
     render_guard_report(report, console)
@@ -584,6 +631,13 @@ def evaluate(
         bool,
         typer.Option(help="Allow plaintext HTTP for deliberate local development"),
     ] = False,
+    auth_token_env: Annotated[
+        str | None,
+        typer.Option(
+            "--auth-token-env",
+            help="Environment variable containing a bearer token; never pass the token itself",
+        ),
+    ] = None,
 ) -> None:
     """Grade replayed or live model tool decisions against an MCP endpoint."""
 
@@ -608,7 +662,13 @@ def evaluate(
             max_pass_rate_drop=max_pass_rate_drop,
             max_failed_trials=max_failed_trials,
         )
-    except (OSError, ValueError, OpenAIDriverConfigurationError) as exc:
+        authentication = load_bearer_authentication(auth_token_env)
+    except (
+        AuthenticationConfigurationError,
+        OSError,
+        ValueError,
+        OpenAIDriverConfigurationError,
+    ) as exc:
         console.print(f"[red]Could not configure behavior evaluation:[/] {exc}")
         raise typer.Exit(code=2) from exc
 
@@ -623,6 +683,7 @@ def evaluate(
                 allow_private=allow_private,
                 allow_insecure_http=allow_insecure_http,
             ),
+            authentication=authentication,
         )
     )
 

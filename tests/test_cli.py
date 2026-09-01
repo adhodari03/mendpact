@@ -396,6 +396,55 @@ def test_policy_cannot_be_weakened_by_scan_cli_options(tmp_path: Path) -> None:
     assert "--fail-on" in result.stdout
 
 
+def test_scan_requires_named_bearer_environment_variable_to_exist() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "scan",
+            "https://example.com/mcp",
+            "--auth-token-env",
+            "MENDPACT_TEST_MISSING_TOKEN",
+        ],
+        env={"MENDPACT_TEST_MISSING_TOKEN": None},
+    )
+
+    assert result.exit_code == 2
+    assert "is not set" in result.stdout
+
+
+def test_scan_rejects_authentication_override_when_policy_is_used(
+    tmp_path: Path,
+) -> None:
+    policy = tmp_path / "mendpact.toml"
+    policy.write_text(
+        '\n'.join(
+            [
+                'schema_version = "mendpact.policy.v1"',
+                'name = "production"',
+                'profile = "production"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "scan",
+            "https://example.com/mcp",
+            "--policy",
+            str(policy),
+            "--auth-token-env",
+            "MENDPACT_TOKEN",
+        ],
+        env={"MENDPACT_TOKEN": "secret-token-value"},
+    )
+
+    assert result.exit_code == 2
+    assert "--auth-token-env" in result.stdout
+    assert "secret-token-value" not in result.stdout
+
+
 def test_guard_does_not_overwrite_baseline(tmp_path: Path) -> None:
     baseline = _write_scan(tmp_path, "baseline", include_tool=True)
 

@@ -178,3 +178,24 @@ def test_renders_active_waiver_as_visible_notice() -> None:
     assert "security@example.com" in rendered.summary
     assert rendered.annotations[0].level == "notice"
     assert "WAIVED" in rendered.annotations[0].title
+
+
+def test_renders_oauth_metadata_without_a_credential_value() -> None:
+    payload = _scan_payload()
+    payload["authorization"] = {
+        "status": "valid",
+        "credential_source": "environment",
+        "bearer_token_env": "MENDPACT_ACCESS_TOKEN",
+        "protected_resource_metadata_url": (
+            "https://api.example.com/.well-known/oauth-protected-resource"
+        ),
+        "authorization_servers": ["https://auth.example.com"],
+        "scopes_supported": ["tools:read"],
+    }
+
+    rendered = render_action_report(payload, "scan.json")
+
+    assert "### OAuth metadata" in rendered.summary
+    assert "https://auth.example.com" in rendered.summary
+    assert "tools:read" in rendered.summary
+    assert "MENDPACT_ACCESS_TOKEN" not in rendered.summary

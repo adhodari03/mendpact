@@ -61,6 +61,9 @@ scan_fail_on = "high"
 contract_fail_on = "risky"
 allow_private = false
 allow_insecure_http = false
+
+# For a protected target, store the token outside the repository and uncomment:
+# bearer_token_env = "MENDPACT_ACCESS_TOKEN"
 """
     workflow = f"""name: MendPact MCP scan
 

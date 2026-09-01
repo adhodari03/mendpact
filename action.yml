@@ -17,6 +17,10 @@ inputs:
     description: Versioned TOML policy that owns thresholds and target allowances.
     required: false
     default: ""
+  auth-token-env:
+    description: Environment variable containing a bearer token. Never provide the token value.
+    required: false
+    default: ""
   fail-on:
     description: Minimum finding severity that fails scan mode.
     required: false
@@ -106,6 +110,7 @@ runs:
         MENDPACT_MODE: ${{ inputs.mode }}
         MENDPACT_TARGET: ${{ inputs.target }}
         MENDPACT_POLICY: ${{ inputs.policy }}
+        MENDPACT_AUTH_TOKEN_ENV: ${{ inputs.auth-token-env }}
         MENDPACT_FAIL_ON: ${{ inputs.fail-on }}
         MENDPACT_BASELINE: ${{ inputs.baseline }}
         MENDPACT_SCENARIO: ${{ inputs.scenario }}
