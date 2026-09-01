@@ -158,3 +158,18 @@ The implementation passed 95 project tests, Ruff, strict MyPy, YAML parsing, and
 local guard run through the Action shell path. That run passed its scan, contract, and affected
 behavior stages, then rendered the stage table, one risky contract change, affected scenario,
 and deterministic scan findings into the expected summary.
+
+## Project initialization validation
+
+Date: September 1, 2026
+
+The production initializer was checked with the complete 127-test project suite, Ruff, strict
+MyPy, and an isolated CLI smoke run. The smoke run generated a production policy, GitHub workflow,
+labeled example scenario, and empty baseline directory without contacting an MCP server or model
+provider. The generated workflow parsed as YAML and the scenario parsed as JSON.
+
+Tests cover deterministic output, collision refusal before any file is written, explicit `--force`
+replacement limited to generated paths, preservation of unrelated files, and rejection of HTTP,
+embedded credentials, query strings, fragments, malformed ports, and whitespace. The initializer
+also rejects structural collisions and symlinks before writing. It does not fabricate a trusted
+baseline or silently enable guard mode.

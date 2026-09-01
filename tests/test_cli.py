@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from mendpact.cli import app
@@ -24,6 +25,157 @@ def test_help_lists_main_commands() -> None:
     assert "evaluate" in result.stdout
     assert "diff" in result.stdout
     assert "guard" in result.stdout
+    assert "init" in result.stdout
+
+
+def test_init_creates_production_safe_scaffold(tmp_path: Path) -> None:
+    project = tmp_path / "consumer"
+
+    result = runner.invoke(
+        app,
+        ["init", str(project), "--target", "https://api.example.com/mcp"],
+    )
+
+    assert result.exit_code == 0
+    policy = (project / "mendpact.toml").read_text(encoding="utf-8")
+    workflow = (project / ".github/workflows/mendpact.yml").read_text(
+        encoding="utf-8"
+    )
+    scenario = json.loads(
+        (project / "mendpact/scenarios.example.json").read_text(encoding="utf-8")
+    )
+    assert 'profile = "production"' in policy
+    assert "allow_private = false" in policy
+    assert "allow_insecure_http = false" in policy
+    assert "adhodari03/mendpact@v0.3.0" in workflow
+    assert 'target: "https://api.example.com/mcp"' in workflow
+    assert "mode: scan" in workflow
+    assert "retention-days: 14" in workflow
+    assert "EXAMPLE" in scenario["name"]
+    assert (project / "mendpact/baselines/.gitkeep").is_file()
+    assert "Review the example scenario" in result.stdout
+
+
+def test_init_refuses_collisions_before_writing_any_file(tmp_path: Path) -> None:
+    project = tmp_path / "consumer"
+    project.mkdir()
+    policy = project / "mendpact.toml"
+    policy.write_text("owned by user\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["init", str(project), "--target", "https://api.example.com/mcp"],
+    )
+
+    assert result.exit_code == 2
+    assert "Refusing to overwrite" in result.stdout
+    assert policy.read_text(encoding="utf-8") == "owned by user\n"
+    assert not (project / ".github/workflows/mendpact.yml").exists()
+
+
+def test_init_force_replaces_only_generated_files_deterministically(tmp_path: Path) -> None:
+    project = tmp_path / "consumer"
+    project.mkdir()
+    unrelated = project / "README.md"
+    unrelated.write_text("keep me\n", encoding="utf-8")
+
+    first = runner.invoke(
+        app,
+        ["init", str(project), "--target", "https://api.example.com/mcp"],
+    )
+    assert first.exit_code == 0
+    expected = (project / "mendpact.toml").read_text(encoding="utf-8")
+    (project / "mendpact.toml").write_text("changed\n", encoding="utf-8")
+
+    second = runner.invoke(
+        app,
+        [
+            "init",
+            str(project),
+            "--target",
+            "https://api.example.com/mcp",
+            "--force",
+        ],
+    )
+
+    assert second.exit_code == 0
+    assert (project / "mendpact.toml").read_text(encoding="utf-8") == expected
+    assert unrelated.read_text(encoding="utf-8") == "keep me\n"
+
+
+@pytest.mark.parametrize(
+    ("target", "message"),
+    [
+        ("http://api.example.com/mcp", "requires a production"),
+        ("https://user:secret@api.example.com/mcp", "must not be embedded"),
+        ("https://api.example.com/mcp?token=secret", "query or fragment"),
+        ("https://api.example.com/mcp#section", "query or fragment"),
+        ("https://api.example.com:invalid/mcp", "invalid port"),
+        ("https://api.example.com/a path", "cannot contain whitespace"),
+    ],
+)
+def test_init_rejects_targets_unsafe_to_commit(
+    tmp_path: Path,
+    target: str,
+    message: str,
+) -> None:
+    project = tmp_path / "consumer"
+
+    result = runner.invoke(app, ["init", str(project), "--target", target])
+
+    assert result.exit_code == 2
+    assert message in result.stdout
+    assert not project.exists()
+
+
+def test_init_quotes_next_command_for_directory_with_spaces(tmp_path: Path) -> None:
+    project = tmp_path / "consumer project"
+
+    result = runner.invoke(
+        app,
+        ["init", str(project), "--target", "https://api.example.com/mcp"],
+    )
+
+    assert result.exit_code == 0
+    assert f"cd '{project}'" in result.stdout
+
+
+def test_init_rejects_structural_collision_before_writing(tmp_path: Path) -> None:
+    project = tmp_path / "consumer"
+    project.mkdir()
+    (project / ".github").write_text("not a directory\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["init", str(project), "--target", "https://api.example.com/mcp"],
+    )
+
+    assert result.exit_code == 2
+    assert "parent is not a directory" in result.stdout
+    assert not (project / "mendpact.toml").exists()
+
+
+def test_init_force_refuses_to_follow_generated_file_symlink(tmp_path: Path) -> None:
+    project = tmp_path / "consumer"
+    project.mkdir()
+    outside = tmp_path / "outside.toml"
+    outside.write_text("do not replace\n", encoding="utf-8")
+    (project / "mendpact.toml").symlink_to(outside)
+
+    result = runner.invoke(
+        app,
+        [
+            "init",
+            str(project),
+            "--target",
+            "https://api.example.com/mcp",
+            "--force",
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "Refusing to overwrite symlink" in result.stdout
+    assert outside.read_text(encoding="utf-8") == "do not replace\n"
 
 
 def test_suite_requires_explicit_tool_call_authorization() -> None:
