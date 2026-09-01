@@ -49,8 +49,21 @@ if [[ -n "${policy}" && -n "${auth_token_env}" ]]; then
   echo "MendPact Action: policy cannot be combined with auth-token-env." >&2
   exit 2
 fi
+if [[ "${mode}" == "auth" && -n "${auth_token_env}" ]]; then
+  echo "MendPact Action: auth mode never loads a token; remove auth-token-env." >&2
+  exit 2
+fi
 
 case "${mode}" in
+  auth)
+    command_args=(
+      mendpact auth-check "${target}"
+    )
+    if [[ -z "${policy}" ]]; then
+      command_args+=(--fail-on "${MENDPACT_FAIL_ON:-high}")
+    fi
+    command_args+=(--output "${output}")
+    ;;
   scan)
     command_args=(
       mendpact scan "${target}"
@@ -93,7 +106,7 @@ case "${mode}" in
     fi
     ;;
   *)
-    echo "MendPact Action: mode must be 'scan' or 'guard'." >&2
+    echo "MendPact Action: mode must be 'auth', 'scan', or 'guard'." >&2
     exit 2
     ;;
 esac

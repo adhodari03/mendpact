@@ -13,6 +13,7 @@ import typer
 from rich.console import Console
 
 from mendpact import __version__
+from mendpact.authorization import audit_oauth_metadata
 from mendpact.behavior import (
     evaluate_mcp_url,
     load_behavior_suite,
@@ -43,11 +44,13 @@ from mendpact.regression import (
     load_behavior_baseline,
 )
 from mendpact.reporting import (
+    render_authorization_report,
     render_behavior_report,
     render_conformance_report,
     render_contract_diff_report,
     render_guard_report,
     render_report,
+    write_authorization_report,
     write_behavior_baseline,
     write_behavior_report,
     write_conformance_report,
@@ -281,6 +284,87 @@ def scan(
             write_json_report(report, output)
         except OSError as exc:
             console.print(f"[red]Could not write report:[/] {exc}")
+            raise typer.Exit(code=2) from exc
+        console.print(f"JSON report: {output}")
+
+    if report.status == ScanStatus.ERROR:
+        raise typer.Exit(code=2)
+    if report.status == ScanStatus.FAILED:
+        raise typer.Exit(code=1)
+
+
+@app.command("auth-check")
+def authorization_check(
+    ctx: typer.Context,
+    target: Annotated[str, typer.Argument(help="Remote Streamable HTTP MCP endpoint")],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Write the authorization audit JSON report"),
+    ] = None,
+    fail_on: Annotated[
+        Severity,
+        typer.Option(
+            "--fail-on",
+            case_sensitive=False,
+            help="Minimum authorization finding severity that fails CI",
+        ),
+    ] = Severity.HIGH,
+    allow_private: Annotated[
+        bool,
+        typer.Option(help="Allow private targets for deliberate local development"),
+    ] = False,
+    allow_insecure_http: Annotated[
+        bool,
+        typer.Option(help="Allow plaintext target probing for deliberate local development"),
+    ] = False,
+    policy_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--policy",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Versioned TOML policy that owns thresholds and target allowances",
+        ),
+    ] = None,
+) -> None:
+    """Audit OAuth discovery metadata without loading or transmitting a token."""
+
+    try:
+        applied_policy = load_policy(policy_file) if policy_file is not None else None
+        if applied_policy is not None:
+            _reject_policy_overrides(
+                ctx,
+                ("fail_on", "allow_private", "allow_insecure_http"),
+            )
+    except (PolicyConfigurationError, ValueError) as exc:
+        console.print(f"[red]Could not configure authorization audit:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    failure_threshold = applied_policy.scan_fail_on if applied_policy else fail_on
+    network_policy = (
+        target_policy(applied_policy)
+        if applied_policy
+        else TargetPolicy(
+            allow_private=allow_private,
+            allow_insecure_http=allow_insecure_http,
+        )
+    )
+    report = anyio.run(
+        partial(
+            audit_oauth_metadata,
+            target,
+            failure_threshold=failure_threshold,
+            policy=network_policy,
+            applied_policy=applied_policy,
+        )
+    )
+    render_authorization_report(report, console)
+    if output is not None:
+        try:
+            write_authorization_report(report, output)
+        except OSError as exc:
+            console.print(f"[red]Could not write authorization report:[/] {exc}")
             raise typer.Exit(code=2) from exc
         console.print(f"JSON report: {output}")
 

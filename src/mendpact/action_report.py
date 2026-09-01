@@ -348,9 +348,86 @@ def _guard_sections(payload: dict[str, Any]) -> tuple[list[str], list[Annotation
     return lines, annotations
 
 
+def _authorization_sections(
+    payload: dict[str, Any],
+) -> tuple[list[str], list[Annotation]]:
+    metadata = payload.get("metadata") or {}
+    lines = [
+        "### OAuth authorization audit",
+        "",
+        *_table(
+            [
+                "Metadata",
+                "Fails on",
+                "Protected resource metadata",
+                "Authorization servers",
+                "Resource scopes",
+                "Challenge scopes",
+            ],
+            [
+                [
+                    str(metadata.get("status", "unknown")).replace("_", " ").title(),
+                    str(payload.get("failure_threshold", "unknown")).upper(),
+                    _safe_target(metadata.get("protected_resource_metadata_url")),
+                    metadata.get("authorization_servers", []),
+                    metadata.get("scopes_supported", []),
+                    metadata.get("challenge_scopes", []),
+                ]
+            ],
+        ),
+    ]
+    warnings = metadata.get("warnings", [])
+    if isinstance(warnings, list) and warnings:
+        lines.extend(["", "#### Discovery warnings", ""])
+        lines.extend(f"- {_cell(warning)}" for warning in warnings[:MAX_TABLE_ROWS])
+
+    annotations: list[Annotation] = []
+    findings = [item for item in payload.get("findings", []) if isinstance(item, dict)]
+    if findings:
+        shown, omitted = _limited_rows(findings)
+        lines.extend(
+            [
+                "",
+                "#### Authorization findings",
+                "",
+                *_table(
+                    ["Severity", "Rule", "Subject", "Finding", "Policy"],
+                    [
+                        [
+                            str(item.get("severity", "unknown")).upper(),
+                            item.get("rule_id"),
+                            item.get("subject"),
+                            item.get("message") or item.get("title"),
+                            _waiver_label(item),
+                        ]
+                        for item in shown
+                    ],
+                ),
+            ]
+        )
+        if omitted:
+            lines.extend(
+                ["", f"_{omitted} additional findings are available in the JSON report._"]
+            )
+        for item in findings:
+            annotations.append(
+                _annotation_for_item(
+                    item,
+                    classification=str(item.get("severity", "unknown")).upper(),
+                    fallback_subject="OAuth metadata",
+                    fallback_message="Authorization finding reported",
+                )
+            )
+    return lines, annotations
+
+
 def render_action_report(payload: dict[str, Any], report_path: str) -> ActionReport:
     schema = payload.get("schema_version")
-    mode = "Guard" if schema == "mendpact.guard.v1" else "Scan"
+    mode = {
+        "mendpact.authorization.v1": "Authorization",
+        "mendpact.guard.v1": "Guard",
+        "mendpact.scan.v1": "Scan",
+    }.get(str(schema), "Report")
     lines = [
         f"## MendPact {mode}",
         "",
@@ -435,6 +512,9 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
 
     if schema == "mendpact.guard.v1":
         section_lines, annotations = _guard_sections(payload)
+        lines.extend(section_lines)
+    elif schema == "mendpact.authorization.v1":
+        section_lines, annotations = _authorization_sections(payload)
         lines.extend(section_lines)
     elif schema == "mendpact.scan.v1":
         section_lines, annotations = _scan_sections(payload)

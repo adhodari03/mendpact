@@ -57,7 +57,28 @@ reducing the result to an opaque score.
 The root composite GitHub Action is a thin distribution adapter. It validates Action inputs,
 constructs quoted CLI arguments without shell evaluation, installs the referenced repository
 revision, and exposes generated artifact paths to the consuming workflow. Scan remains the
-default mode so existing Action configurations continue to work.
+default mode so existing Action configurations continue to work. Authorization mode calls the
+same credential-free audit as the CLI and rejects token configuration before constructing the
+command.
+
+Authorization preflight is a separate read-only vertical slice:
+
+```text
+target validation ---> unauthenticated Bearer challenge
+                                 |
+                                 v
+                   protected-resource metadata
+                                 |
+                                 v
+                   authorization-server metadata
+                                 |
+                                 v
+               versioned authorization audit report
+```
+
+The preflight shares the metadata parser and network policy used by authenticated scans, but it
+does not instantiate bearer authentication or connect through the MCP client. This separation is
+represented explicitly in report evidence as `credential_source: none`.
 
 The separate `mendpact conformance` path invokes the pinned official MCP conformance CLI as a
 child process. It validates the target first, runs the upstream package without a shell, reads
@@ -68,6 +89,7 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 ## Boundaries
 
 - `domain.py` owns provider-neutral, serialized data structures.
+- `authorization.py` orchestrates credential-free OAuth discovery audits.
 - `adapters/` converts protocol-specific objects into the domain model.
 - `checks/` operates only on the normalized capability graph.
 - `scanner.py` orchestrates a run and determines its CI status.
