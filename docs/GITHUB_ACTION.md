@@ -21,6 +21,20 @@ Policy-as-code support is introduced in `v0.3.0`. When `policy` is configured, t
 file owns scan and contract thresholds plus target-network allowances. See the
 [policy reference](POLICY.md).
 
+## Generate a scan workflow
+
+From the root of a consuming repository, generate a secure starting workflow and policy:
+
+```bash
+mendpact init --target https://api.example.com/mcp
+```
+
+The generated workflow uses `v0.3.0` in scan mode, uploads the machine report for 14 days, and
+grants only read access to repository contents. The initializer remains offline: it creates an
+empty baseline directory and a labeled example scenario but does not contact the target, invent a
+baseline, or enable guard mode. Use `--force` only after reviewing the generated-file collisions
+reported by the command.
+
 ## Scan mode
 
 ```yaml

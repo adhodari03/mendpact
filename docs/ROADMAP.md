@@ -45,7 +45,7 @@
 - [x] versioned policy-as-code with production and local profiles
 - [x] strict-policy negative CI test
 - [x] controlled, expiring waivers with a 14-day maximum
-- one-command project initialization
+- [x] one-command project initialization
 - authenticated production targets and OAuth metadata checks
 
 ## Milestone 0.6 — cross-provider matrix

@@ -38,6 +38,24 @@ mendpact scan http://127.0.0.1:8000/mcp \
 The fixture intentionally exposes a destructive-looking tool, so this scan exits with code `1`
 and demonstrates the CI failure path.
 
+## Initialize a repository
+
+Create a production-safe policy and GitHub scan workflow in an application repository:
+
+```bash
+mendpact init --target https://api.example.com/mcp
+```
+
+The command creates `mendpact.toml`, `.github/workflows/mendpact.yml`, an empty baseline
+directory, and a clearly labeled example scenario. It refuses plaintext HTTP, URL credentials,
+query strings, and fragments because the target is committed to the workflow. Existing generated
+files are never replaced unless `--force` is supplied.
+
+The generated workflow starts in deterministic scan mode and uses production policy defaults.
+MendPact does not invent a baseline or activate the example behavior scenario. Review the first
+scan, save it as `mendpact/baselines/baseline-scan.json`, replace the example with real behavior,
+and then deliberately upgrade the workflow to guard mode.
+
 ## Behavioral evaluation
 
 MendPact can also test whether a model decision chose the intended MCP tool and produced valid
