@@ -68,6 +68,18 @@ mendpact scan https://api.example.com/mcp \
   --output mendpact-scan-report.json
 ```
 
+Before provisioning a credential, audit the endpoint's public OAuth discovery chain:
+
+```bash
+mendpact auth-check https://api.example.com/mcp \
+  --output mendpact-authorization-report.json
+```
+
+This credential-free preflight checks the unauthenticated Bearer challenge, RFC 9728
+protected-resource metadata, authorization-server discovery, exact resource and issuer binding,
+HTTPS endpoints, and PKCE `S256` advertisement. It emits a versioned
+`mendpact.authorization.v1` report and never loads or transmits a bearer token.
+
 Authenticated scans also inspect RFC 9728 protected-resource metadata and the advertised OAuth or
 OpenID authorization-server metadata without sending the token to those endpoints. See the
 [authenticated-target guide](docs/AUTHENTICATION.md) for policy, GitHub secret, discovery, and
@@ -218,7 +230,8 @@ policy.
 ## GitHub Action
 
 MendPact can run as a composite GitHub Action. Scan mode remains the default for backward
-compatibility, while guard mode runs the complete scan, contract, and affected-replay workflow.
+compatibility, `auth` mode performs a credential-free OAuth preflight, and guard mode runs the
+complete scan, contract, and affected-replay workflow.
 
 ```yaml
 - id: mendpact
@@ -236,8 +249,8 @@ The `v0.2.0` Action writes a Markdown job summary and bounded workflow annotatio
 the JSON report as its complete machine-readable output. It also exposes the report and
 candidate-scan paths so the consuming workflow controls artifact upload and retention. Pin an
 exact full commit SHA when an immutable reference with stronger supply-chain guarantees is
-required. See the [GitHub Action guide](docs/GITHUB_ACTION.md) for complete scan and guard
-workflows.
+required. See the [GitHub Action guide](docs/GITHUB_ACTION.md) for complete authorization, scan,
+and guard workflows.
 
 ## Policy as code
 
@@ -301,7 +314,9 @@ Exit codes are designed for CI:
   behavior;
 - tool descriptions containing prompt-injection-like instructions;
 - overly large tool catalogs;
-- insecure HTTP transport.
+- insecure HTTP transport;
+- missing or unsafe OAuth protected-resource and authorization-server metadata;
+- exact resource or issuer mismatches, unsafe OAuth endpoints, and missing PKCE `S256` signaling.
 
 These checks are intentionally conservative heuristics. Every finding includes its rule ID and
 evidence so a maintainer can review it rather than accepting a mysterious score.

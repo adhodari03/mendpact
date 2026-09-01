@@ -1,18 +1,19 @@
 # GitHub Action
 
 MendPact is packaged as a composite GitHub Action in the repository root. Existing scan users
-remain on `mode: scan` by default. Guard users select `mode: guard` and provide a committed scan
-baseline, plus an optional scenario/replay pair.
+remain on `mode: scan` by default. Authorization preflights use `mode: auth` without a credential.
+Guard users select `mode: guard` and provide a committed scan baseline, plus an optional
+scenario/replay pair.
 
 The Action installs the MendPact version contained in the referenced Git revision. The first
 alpha reference was `v0.1.0`; PR-native feedback is introduced in `v0.2.0`. GitHub recommends
 pinning third-party actions to a full commit SHA when an immutable reference is required. Use
 `main` only for deliberate pre-release testing.
 
-Every scan and guard run writes a Markdown result to the GitHub job summary and emits bounded
-workflow annotations for findings, contract changes, and report errors. These presentation steps
-do not change MendPact's configured pass/fail thresholds. The JSON report remains the complete,
-machine-readable source of truth.
+Every authorization, scan, and guard run writes a Markdown result to the GitHub job summary and
+emits bounded workflow annotations for findings, contract changes, and report errors. These
+presentation steps do not change MendPact's configured pass/fail thresholds. The JSON report
+remains the complete, machine-readable source of truth.
 
 The immutable `v0.1.0` tag predates PR-native summaries. Use `v0.2.0` or a later release for this
 feedback.
@@ -54,6 +55,48 @@ environment variable referenced by policy:
 For runs without policy, add `auth-token-env: MENDPACT_ACCESS_TOKEN`. The Action passes only that
 name to the CLI. The secret value stays in the environment and is never constructed as a command
 argument. See [authenticated targets](AUTHENTICATION.md) for OAuth metadata checks and limitations.
+
+## Authorization preflight mode
+
+Audit the public OAuth discovery chain before provisioning a token. This mode deliberately rejects
+`auth-token-env` and never loads a credential:
+
+```yaml
+name: MCP authorization metadata
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  mendpact-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - id: mendpact-auth
+        uses: adhodari03/mendpact@v0.3.0
+        with:
+          mode: auth
+          target: https://api.example.com/mcp
+          policy: mendpact.toml
+          output: mendpact-authorization-report.json
+      - if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-authorization-report
+          path: mendpact-authorization-report.json
+          if-no-files-found: ignore
+          retention-days: 14
+```
+
+The Action publishes a dedicated authorization summary, bounded findings, and the report path.
+See [`examples/github-actions/mendpact-auth.yml`](../examples/github-actions/mendpact-auth.yml) for
+the copy-ready workflow.
 
 ## Scan mode
 

@@ -31,6 +31,18 @@ mendpact scan https://api.example/mcp \
   --output scan-report.json
 ```
 
+Audit the public OAuth metadata chain without loading the policy's named token variable:
+
+```bash
+mendpact auth-check https://api.example/mcp \
+  --policy examples/policies/production.toml \
+  --output authorization-report.json
+```
+
+For `auth-check`, `scan_fail_on` is the authorization finding threshold. The policy's
+`bearer_token_env` remains reportable configuration evidence but is never resolved or read by the
+credential-free command.
+
 Run the unified guard:
 
 ```bash
@@ -115,8 +127,8 @@ allowance inputs:
     output: mendpact-guard-report.json
 ```
 
-Do not combine `policy` with `allow-private` or `allow-insecure-http`. Threshold inputs are ignored
-when a policy is present because the reviewed file is the source of truth.
+Do not combine `policy` with `allow-private`, `allow-insecure-http`, or command-specific threshold
+options. The CLI rejects those combinations because the reviewed file is the source of truth.
 
 ## Exit behavior
 

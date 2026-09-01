@@ -1,0 +1,31 @@
+name: MendPact authorization preflight
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  authorization-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - id: mendpact-auth
+        uses: adhodari03/mendpact@v0.3.0
+        with:
+          mode: auth
+          target: https://api.example.com/mcp
+          policy: mendpact.toml
+          output: mendpact-authorization-report.json
+      - if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-authorization-report
+          path: mendpact-authorization-report.json
+          if-no-files-found: ignore
+          retention-days: 14

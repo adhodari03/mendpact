@@ -267,7 +267,7 @@ async def _inspect_authorization_server(
 async def inspect_oauth_metadata(
     target: str,
     *,
-    bearer_token_env: str,
+    bearer_token_env: str | None = None,
     policy: TargetPolicy,
     transport: httpx2.AsyncBaseTransport | None = None,
 ) -> tuple[OAuthMetadataEvidence, list[Finding]]:
@@ -319,13 +319,20 @@ async def inspect_oauth_metadata(
                     "MP-AUTH-001",
                     Severity.HIGH,
                     "Protected-resource metadata not found",
-                    "Bearer authentication is configured, but RFC 9728 metadata was not found.",
+                    (
+                        "Bearer authentication is configured, but RFC 9728 metadata was not found."
+                        if bearer_token_env is not None
+                        else "RFC 9728 metadata was not found for the MCP target."
+                    ),
                     subject="oauth:protected-resource",
                 )
             )
             return (
                 OAuthMetadataEvidence(
                     status=OAuthMetadataStatus.NOT_FOUND,
+                    credential_source=(
+                        "environment" if bearer_token_env is not None else "none"
+                    ),
                     bearer_token_env=bearer_token_env,
                     challenge_metadata_url=challenge_url,
                     challenge_scopes=challenge_scopes,
@@ -351,7 +358,7 @@ async def inspect_oauth_metadata(
         if not authorization_servers:
             findings.append(
                 _finding(
-                    "MP-AUTH-002",
+                    "MP-AUTH-008",
                     Severity.HIGH,
                     "Authorization servers missing",
                     "Protected-resource metadata must list at least one authorization server.",
@@ -379,6 +386,9 @@ async def inspect_oauth_metadata(
     return (
         OAuthMetadataEvidence(
             status=status,
+            credential_source=(
+                "environment" if bearer_token_env is not None else "none"
+            ),
             bearer_token_env=bearer_token_env,
             challenge_metadata_url=challenge_url,
             challenge_scopes=challenge_scopes,

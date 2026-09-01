@@ -199,3 +199,43 @@ def test_renders_oauth_metadata_without_a_credential_value() -> None:
     assert "https://auth.example.com" in rendered.summary
     assert "tools:read" in rendered.summary
     assert "MENDPACT_ACCESS_TOKEN" not in rendered.summary
+
+
+def test_renders_standalone_authorization_audit() -> None:
+    payload: dict[str, object] = {
+        "schema_version": "mendpact.authorization.v1",
+        "status": "failed",
+        "target": "https://api.example.com/mcp",
+        "failure_threshold": "high",
+        "metadata": {
+            "status": "invalid",
+            "credential_source": "none",
+            "protected_resource_metadata_url": (
+                "https://api.example.com/.well-known/oauth-protected-resource"
+            ),
+            "authorization_servers": ["https://auth.example.com"],
+            "scopes_supported": ["tools:read"],
+            "challenge_scopes": ["tools:read", "profile"],
+            "warnings": ["OIDC fallback was used."],
+        },
+        "findings": [
+            {
+                "severity": "high",
+                "rule_id": "MP-AUTH-005",
+                "subject": "oauth:issuer:https://auth.example.com",
+                "message": "Issuer did not match.",
+            }
+        ],
+        "errors": [],
+    }
+
+    rendered = render_action_report(payload, "authorization.json")
+
+    assert "## MendPact Authorization" in rendered.summary
+    assert "### OAuth authorization audit" in rendered.summary
+    assert "#### Authorization findings" in rendered.summary
+    assert "MP-AUTH-005" in rendered.summary
+    assert "OIDC fallback was used." in rendered.summary
+    assert "HIGH" in rendered.summary
+    assert "profile" in rendered.summary
+    assert rendered.annotations[0].level == "error"

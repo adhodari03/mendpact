@@ -47,6 +47,7 @@
 - [x] controlled, expiring waivers with a 14-day maximum
 - [x] one-command project initialization
 - [x] authenticated production targets and OAuth metadata checks
+- [x] credential-free OAuth deployment preflight and Action mode
 
 ## Milestone 0.6 — cross-provider matrix
 

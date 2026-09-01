@@ -1,5 +1,5 @@
 name: MendPact MCP Reliability
-description: Scan an MCP endpoint or guard it against contract and behavior regressions.
+description: Audit OAuth, scan an MCP endpoint, or guard it against compatibility regressions.
 author: MendPact
 branding:
   icon: shield
@@ -7,7 +7,7 @@ branding:
 
 inputs:
   mode:
-    description: Run `scan` or the unified `guard` workflow.
+    description: Run `auth`, `scan`, or the unified `guard` workflow.
     required: false
     default: scan
   target:
@@ -18,11 +18,11 @@ inputs:
     required: false
     default: ""
   auth-token-env:
-    description: Environment variable containing a bearer token. Never provide the token value.
+    description: Environment variable containing a bearer token for scan or guard mode.
     required: false
     default: ""
   fail-on:
-    description: Minimum finding severity that fails scan mode.
+    description: Minimum finding severity that fails authorization or scan mode.
     required: false
     default: high
   baseline:
@@ -68,7 +68,7 @@ inputs:
 
 outputs:
   report:
-    description: Path to the generated scan or guard JSON report.
+    description: Path to the generated authorization, scan, or guard JSON report.
     value: ${{ steps.metadata.outputs.report }}
   candidate-scan:
     description: Candidate scan path when `save-scan` is configured.

@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 
 from mendpact.domain import (
+    AuthorizationAuditReport,
     BehaviorBaseline,
     BehaviorReport,
     ConformanceCheckStatus,
@@ -23,6 +24,13 @@ from mendpact.domain import (
 
 
 def write_json_report(report: ScanReport, destination: Path) -> None:
+    destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+
+def write_authorization_report(
+    report: AuthorizationAuditReport,
+    destination: Path,
+) -> None:
     destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
 
 
@@ -87,6 +95,60 @@ def render_report(report: ScanReport, console: Console) -> None:
 
     if not report.findings:
         console.print("[green]No deterministic findings.[/]")
+        return
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Severity", width=10)
+    table.add_column("Rule", width=12)
+    table.add_column("Subject", overflow="fold")
+    table.add_column("Finding", overflow="fold")
+    table.add_column("Policy", overflow="fold")
+    for finding in report.findings:
+        table.add_row(
+            finding.severity.value.upper(),
+            finding.rule_id,
+            finding.subject or "-",
+            f"{finding.title}: {finding.message}",
+            (
+                f"waived until {finding.waiver.expires_on}"
+                if finding.waiver
+                else "enforced"
+            ),
+        )
+    console.print(table)
+
+
+def render_authorization_report(
+    report: AuthorizationAuditReport,
+    console: Console,
+) -> None:
+    status_style = {
+        ScanStatus.PASSED: "bold green",
+        ScanStatus.FAILED: "bold red",
+        ScanStatus.ERROR: "bold red",
+    }[report.status]
+    console.print(
+        f"MendPact authorization audit: [{status_style}]{report.status.value.upper()}[/]"
+    )
+    console.print(f"Target: {report.target}")
+    console.print(f"Fails on: {report.failure_threshold.value}")
+    if report.policy:
+        console.print(
+            f"Policy: {report.policy.name} ({report.policy.profile.value})"
+        )
+    if report.metadata:
+        console.print(
+            f"OAuth metadata: {report.metadata.status.value} | "
+            f"Authorization servers: {len(report.metadata.authorization_servers)} | "
+            f"Challenge scopes: {', '.join(report.metadata.challenge_scopes) or '-'}"
+        )
+        for warning in report.metadata.warnings:
+            console.print(f"[yellow]Metadata warning:[/] {warning}")
+    for error in report.errors:
+        console.print(f"[red]Error:[/] {error}")
+    if not report.findings:
+        if not report.errors:
+            console.print("[green]No authorization metadata findings.[/]")
         return
 
     table = Table(show_header=True, header_style="bold")

@@ -30,6 +30,7 @@ only the variable name.
 
 ## Authenticated targets
 
+- `auth-check` never loads a token, and Action auth mode rejects `auth-token-env`.
 - Bearer token values are loaded only from explicitly named environment variables.
 - Tokens are never accepted in policy files, CLI arguments, Action inputs, or target URLs.
 - The configured token is defensively removed from captured MCP exceptions before reporting.
@@ -38,6 +39,8 @@ only the variable name.
 - Protected-resource identifiers and authorization-server issuers are compared exactly.
 - MendPact consumes a pre-issued token; it does not persist, refresh, mint, or validate the claims
   of that token.
+- A successful metadata preflight does not prove token issuance, token audience, scope
+  enforcement, or authorization on individual MCP methods.
 
 ## Conformance execution
 

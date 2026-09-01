@@ -129,7 +129,7 @@ def test_action_script_rejects_unknown_mode_and_boolean(tmp_path: Path) -> None:
     )
 
     assert unknown_mode.returncode == 2
-    assert "mode must be 'scan' or 'guard'" in unknown_mode.stderr
+    assert "mode must be 'auth', 'scan', or 'guard'" in unknown_mode.stderr
     assert invalid_boolean.returncode == 2
     assert "must be 'true' or 'false'" in invalid_boolean.stderr
 
@@ -197,3 +197,61 @@ def test_action_script_rejects_policy_with_authentication_input(tmp_path: Path) 
 
     assert result.returncode == 2
     assert "policy cannot be combined with auth-token-env" in result.stderr
+
+
+def test_action_script_builds_credential_free_authorization_audit(
+    tmp_path: Path,
+) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="auth",
+        MENDPACT_TARGET="https://example.com/mcp",
+        MENDPACT_FAIL_ON="medium",
+        MENDPACT_OUTPUT="oauth report.json",
+    )
+
+    assert result.returncode == 0
+    assert _arguments(tmp_path) == [
+        "auth-check",
+        "https://example.com/mcp",
+        "--fail-on",
+        "medium",
+        "--output",
+        "oauth report.json",
+    ]
+
+
+def test_action_script_rejects_token_configuration_in_auth_mode(
+    tmp_path: Path,
+) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="auth",
+        MENDPACT_TARGET="https://example.com/mcp",
+        MENDPACT_AUTH_TOKEN_ENV="MENDPACT_ACCESS_TOKEN",
+    )
+
+    assert result.returncode == 2
+    assert "auth mode never loads a token" in result.stderr
+
+
+def test_action_script_lets_policy_own_authorization_threshold(
+    tmp_path: Path,
+) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="auth",
+        MENDPACT_TARGET="https://example.com/mcp",
+        MENDPACT_POLICY="mendpact.toml",
+        MENDPACT_OUTPUT="authorization.json",
+    )
+
+    assert result.returncode == 0
+    assert _arguments(tmp_path) == [
+        "auth-check",
+        "https://example.com/mcp",
+        "--output",
+        "authorization.json",
+        "--policy",
+        "mendpact.toml",
+    ]

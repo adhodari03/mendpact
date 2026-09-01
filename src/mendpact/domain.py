@@ -169,8 +169,8 @@ class OAuthMetadataEvidence(BaseModel):
     """Read-only authorization metadata inspection retained in a scan report."""
 
     status: OAuthMetadataStatus
-    credential_source: Literal["environment"] = "environment"
-    bearer_token_env: str
+    credential_source: Literal["none", "environment"] = "none"
+    bearer_token_env: str | None = None
     challenge_metadata_url: str | None = None
     challenge_scopes: list[str] = Field(default_factory=list)
     protected_resource_metadata_url: str | None = None
@@ -194,6 +194,23 @@ class ScanReport(BaseModel):
     findings: list[Finding] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     summary: ScanSummary | None = None
+
+
+class AuthorizationAuditReport(BaseModel):
+    """Versioned credential-free audit of MCP OAuth discovery metadata."""
+
+    schema_version: Literal["mendpact.authorization.v1"] = (
+        "mendpact.authorization.v1"
+    )
+    audit_id: str = Field(default_factory=lambda: str(uuid4()))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    target: str
+    status: ScanStatus
+    failure_threshold: Severity
+    policy: PolicySnapshot | None = None
+    metadata: OAuthMetadataEvidence | None = None
+    findings: list[Finding] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
 
 
 class ContractImpact(StrEnum):

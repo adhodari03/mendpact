@@ -26,6 +26,7 @@ def test_help_lists_main_commands() -> None:
     assert "diff" in result.stdout
     assert "guard" in result.stdout
     assert "init" in result.stdout
+    assert "auth-check" in result.stdout
 
 
 def test_init_creates_production_safe_scaffold(tmp_path: Path) -> None:

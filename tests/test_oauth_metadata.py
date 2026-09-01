@@ -83,6 +83,49 @@ async def test_uses_bearer_challenge_and_validates_oauth_metadata(
 
 
 @pytest.mark.anyio
+async def test_credential_free_audit_never_constructs_authorization_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        requests.append(request)
+        assert "authorization" not in request.headers
+        url = str(request.url)
+        if url == TARGET:
+            return httpx2.Response(
+                401,
+                headers={
+                    "WWW-Authenticate": f'Bearer resource_metadata="{RESOURCE_METADATA}"'
+                },
+            )
+        if url == RESOURCE_METADATA:
+            return httpx2.Response(
+                200,
+                json={"resource": TARGET, "authorization_servers": [ISSUER]},
+            )
+        if url == "https://auth.example.com/.well-known/oauth-authorization-server/tenant":
+            return httpx2.Response(200, json=_authorization_server_metadata())
+        return httpx2.Response(404)
+
+    monkeypatch.setattr(
+        "mendpact.security.oauth_metadata.validate_target_url",
+        _skip_dns_validation,
+    )
+    evidence, findings = await inspect_oauth_metadata(
+        TARGET,
+        policy=TargetPolicy(),
+        transport=httpx2.MockTransport(handler),
+    )
+
+    assert evidence.status == OAuthMetadataStatus.VALID
+    assert evidence.credential_source == "none"
+    assert evidence.bearer_token_env is None
+    assert findings == []
+    assert requests
+
+
+@pytest.mark.anyio
 async def test_falls_back_to_path_then_root_well_known_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -143,6 +186,36 @@ async def test_missing_protected_resource_metadata_is_high_severity(
     assert evidence.status == OAuthMetadataStatus.NOT_FOUND
     assert [finding.rule_id for finding in findings] == ["MP-AUTH-001"]
     assert findings[0].severity == Severity.HIGH
+
+
+@pytest.mark.anyio
+async def test_missing_authorization_servers_has_a_distinct_waiver_rule(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        url = str(request.url)
+        if url == TARGET:
+            return httpx2.Response(405)
+        if url.endswith("/.well-known/oauth-protected-resource/public/mcp"):
+            return httpx2.Response(
+                200,
+                json={"resource": TARGET, "authorization_servers": []},
+            )
+        return httpx2.Response(404)
+
+    monkeypatch.setattr(
+        "mendpact.security.oauth_metadata.validate_target_url",
+        _skip_dns_validation,
+    )
+    evidence, findings = await inspect_oauth_metadata(
+        TARGET,
+        policy=TargetPolicy(),
+        transport=httpx2.MockTransport(handler),
+    )
+
+    assert evidence.status == OAuthMetadataStatus.INVALID
+    assert [finding.rule_id for finding in findings] == ["MP-AUTH-008"]
+    assert findings[0].subject == "oauth:protected-resource"
 
 
 @pytest.mark.anyio

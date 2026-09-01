@@ -196,3 +196,27 @@ No third-party MCP server, production credential, OAuth login, model-provider re
 operation was used. Full authorization-code, refresh-token, audience-claim, and live hosted-server
 interoperability remain outside this implementation; MendPact consumes a pre-issued token and
 audits discovery metadata without acquiring credentials.
+
+## Credential-free authorization preflight validation
+
+Date: September 1, 2026
+
+The standalone `auth-check` command and GitHub Action `auth` mode were checked with the complete
+161-test project suite, Ruff, strict MyPy, Bash syntax validation, Action/example YAML parsing, and
+diff whitespace validation. Tests cover a valid credential-free discovery chain, absence of an
+`Authorization` header on every metadata request, severity thresholds, exact active waivers,
+target-validation errors, versioned JSON output, policy-owned settings, an unset policy-named
+token variable, Action argument construction, accidental token-input rejection, and GitHub summary
+rendering.
+
+An isolated loopback smoke run exercised both the installed CLI and the actual Action shell path
+against the local MCP fixture. The fixture intentionally has no RFC 9728 metadata and uses HTTP,
+so both paths produced the expected `mendpact.authorization.v1` failure report, returned exit `1`,
+and reported `MP-AUTH-001`/`MP-AUTH-002` instead of falsely passing. The generated report recorded
+`credential_source: none` and a null `bearer_token_env`; its GitHub summary and annotations were
+also rendered successfully.
+
+The passing metadata path was exercised with an in-memory HTTP transport and realistic Bearer,
+protected-resource, and authorization-server documents. No third-party endpoint, bearer token,
+model provider, API key, or paid request was used. Live interoperability with a deployed HTTPS MCP
+authorization server remains a pre-release validation task.
