@@ -116,6 +116,44 @@ def test_local_profile_requires_explicit_target_allowances(tmp_path: Path) -> No
     assert target_policy(explicit).allow_private is True
 
 
+def test_policy_records_only_bearer_environment_variable_name(tmp_path: Path) -> None:
+    path = _write_policy(
+        tmp_path,
+        '\n'.join(
+            [
+                'schema_version = "mendpact.policy.v1"',
+                'name = "production"',
+                'profile = "production"',
+                'bearer_token_env = "MENDPACT_ACCESS_TOKEN"',
+            ]
+        ),
+    )
+
+    policy = load_policy(path)
+
+    assert policy.bearer_token_env == "MENDPACT_ACCESS_TOKEN"
+    assert "secret" not in policy.model_dump_json()
+
+
+def test_policy_rejects_invalid_bearer_environment_variable_name(
+    tmp_path: Path,
+) -> None:
+    path = _write_policy(
+        tmp_path,
+        '\n'.join(
+            [
+                'schema_version = "mendpact.policy.v1"',
+                'name = "production"',
+                'profile = "production"',
+                'bearer_token_env = "not a valid name"',
+            ]
+        ),
+    )
+
+    with pytest.raises(PolicyConfigurationError, match="String should match pattern"):
+        load_policy(path)
+
+
 @pytest.mark.parametrize(
     ("setting", "message"),
     [

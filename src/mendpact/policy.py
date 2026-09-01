@@ -64,6 +64,12 @@ class _PolicyDocument(BaseModel):
     contract_fail_on: ContractImpact | None = None
     allow_private: StrictBool | None = None
     allow_insecure_http: StrictBool | None = None
+    bearer_token_env: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=120,
+        pattern=r"^[A-Za-z_][A-Za-z0-9_]*$",
+    )
     waivers: list[_WaiverDocument] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -128,6 +134,7 @@ def _resolved(
             if document.allow_insecure_http is not None
             else False
         ),
+        bearer_token_env=document.bearer_token_env,
         waivers=waivers,
     )
 

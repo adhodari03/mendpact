@@ -11,6 +11,7 @@ license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
   "anyio>=4.9,<5.0",
+  "httpx2>=2.5,<3.0",
   "jsonschema>=4.20,<5.0",
   "mcp[cli]>=2.0,<3.0",
   "pydantic>=2.11,<3.0",

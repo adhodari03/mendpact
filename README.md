@@ -56,6 +56,23 @@ MendPact does not invent a baseline or activate the example behavior scenario. R
 scan, save it as `mendpact/baselines/baseline-scan.json`, replace the example with real behavior,
 and then deliberately upgrade the workflow to guard mode.
 
+### Authenticated production targets
+
+MendPact can load a pre-issued bearer token from a named environment variable. The token value is
+never accepted as a CLI argument, policy value, URL parameter, or Action input:
+
+```bash
+export MENDPACT_ACCESS_TOKEN='your-short-lived-token'
+mendpact scan https://api.example.com/mcp \
+  --auth-token-env MENDPACT_ACCESS_TOKEN \
+  --output mendpact-scan-report.json
+```
+
+Authenticated scans also inspect RFC 9728 protected-resource metadata and the advertised OAuth or
+OpenID authorization-server metadata without sending the token to those endpoints. See the
+[authenticated-target guide](docs/AUTHENTICATION.md) for policy, GitHub secret, discovery, and
+security details.
+
 ## Behavioral evaluation
 
 MendPact can also test whether a model decision chose the intended MCP tool and produced valid

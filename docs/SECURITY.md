@@ -28,6 +28,17 @@ provider. Reports retain normalized choices, response identifiers, latency, and 
 not the complete provider response. A real `.env` file remains ignored; `.env.example` contains
 only the variable name.
 
+## Authenticated targets
+
+- Bearer token values are loaded only from explicitly named environment variables.
+- Tokens are never accepted in policy files, CLI arguments, Action inputs, or target URLs.
+- The configured token is defensively removed from captured MCP exceptions before reporting.
+- OAuth metadata requests are unauthenticated, HTTPS-only, do not follow redirects, and remain
+  subject to MendPact's private-address boundary.
+- Protected-resource identifiers and authorization-server issuers are compared exactly.
+- MendPact consumes a pre-issued token; it does not persist, refresh, mint, or validate the claims
+  of that token.
+
 ## Conformance execution
 
 The official conformance suite can invoke MCP tools. A full suite must never be aimed at a

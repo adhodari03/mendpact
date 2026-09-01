@@ -51,6 +51,12 @@ class ScanStatus(StrEnum):
     ERROR = "error"
 
 
+class OAuthMetadataStatus(StrEnum):
+    VALID = "valid"
+    INVALID = "invalid"
+    NOT_FOUND = "not_found"
+
+
 class PolicyProfile(StrEnum):
     """Security posture selected by a versioned MendPact policy."""
 
@@ -148,6 +154,33 @@ class ScanSummary(BaseModel):
     findings_by_severity: dict[str, int]
 
 
+class AuthorizationServerEvidence(BaseModel):
+    """Validated discovery evidence for one OAuth authorization server."""
+
+    issuer: str
+    metadata_url: str | None = None
+    authorization_endpoint: str | None = None
+    token_endpoint: str | None = None
+    code_challenge_methods_supported: list[str] = Field(default_factory=list)
+    client_id_metadata_document_supported: bool = False
+
+
+class OAuthMetadataEvidence(BaseModel):
+    """Read-only authorization metadata inspection retained in a scan report."""
+
+    status: OAuthMetadataStatus
+    credential_source: Literal["environment"] = "environment"
+    bearer_token_env: str
+    challenge_metadata_url: str | None = None
+    challenge_scopes: list[str] = Field(default_factory=list)
+    protected_resource_metadata_url: str | None = None
+    resource: str | None = None
+    authorization_servers: list[str] = Field(default_factory=list)
+    scopes_supported: list[str] = Field(default_factory=list)
+    server_metadata: list[AuthorizationServerEvidence] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class ScanReport(BaseModel):
     schema_version: str = "mendpact.scan.v1"
     scan_id: str = Field(default_factory=lambda: str(uuid4()))
@@ -157,6 +190,7 @@ class ScanReport(BaseModel):
     failure_threshold: Severity
     policy: PolicySnapshot | None = None
     graph: CapabilityGraph | None = None
+    authorization: OAuthMetadataEvidence | None = None
     findings: list[Finding] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     summary: ScanSummary | None = None
@@ -189,6 +223,7 @@ class PolicySnapshot(BaseModel):
     contract_fail_on: ContractImpact
     allow_private: bool = False
     allow_insecure_http: bool = False
+    bearer_token_env: str | None = None
     waivers: list[PolicyWaiver] = Field(default_factory=list)
 
 

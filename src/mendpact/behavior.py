@@ -21,6 +21,7 @@ from mendpact.domain import (
 )
 from mendpact.drivers.base import ModelDriver
 from mendpact.grading import grade_tool_call
+from mendpact.security.auth import BearerAuthentication, redact_authentication
 from mendpact.security.targets import TargetPolicy, validate_target_url
 
 
@@ -150,13 +151,14 @@ async def evaluate_mcp_url(
     *,
     repetitions: int = 1,
     policy: TargetPolicy | None = None,
+    authentication: BearerAuthentication | None = None,
 ) -> BehaviorReport:
     """Evaluate a remote MCP catalog with a provider-neutral model driver."""
 
     policy = policy or TargetPolicy()
     try:
         await validate_target_url(target, policy)
-        graph = await discover_mcp_target(target)
+        graph = await discover_mcp_target(target, authentication=authentication)
     except Exception as exc:
         return BehaviorReport(
             target=target,
@@ -165,7 +167,9 @@ async def evaluate_mcp_url(
             driver=driver.name,
             model=driver.model,
             repetitions=repetitions,
-            errors=[f"{type(exc).__name__}: {exc}"],
+            errors=[
+                f"{type(exc).__name__}: {redact_authentication(exc, authentication)}"
+            ],
         )
     return await evaluate_capability_graph(target, graph, suite, driver, repetitions)
 

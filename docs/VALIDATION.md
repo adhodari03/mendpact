@@ -173,3 +173,26 @@ replacement limited to generated paths, preservation of unrelated files, and rej
 embedded credentials, query strings, fragments, malformed ports, and whitespace. The initializer
 also rejects structural collisions and symlinks before writing. It does not fabricate a trusted
 baseline or silently enable guard mode.
+
+## Authenticated-target validation
+
+Date: September 1, 2026
+
+Bearer transport and OAuth metadata inspection were checked with the complete 148-test project
+suite, Ruff, strict MyPy, Bash syntax validation, and Action metadata YAML parsing. Mocked HTTP
+tests cover Bearer challenge discovery, path-specific then root protected-resource fallback,
+exact resource and issuer matching, OAuth and OpenID metadata discovery, required HTTPS endpoints,
+PKCE `S256` signaling, missing metadata, policy resolution, GitHub Action argument construction,
+and report rendering.
+
+A local network integration wrapped the two-tool MCP fixture with an HTTP authorization boundary
+that returned `401` unless every request contained the expected Bearer header. Both the transport
+adapter and a complete CLI scan discovered the two tools only when configured with the disposable
+environment-loaded credential, proving the header reached the real MCP transport rather than only
+a mocked function. The CLI report retained the environment-variable name and expected local OAuth
+findings without containing the token value. No credential was written to the repository.
+
+No third-party MCP server, production credential, OAuth login, model-provider request, or paid
+operation was used. Full authorization-code, refresh-token, audience-claim, and live hosted-server
+interoperability remain outside this implementation; MendPact consumes a pre-issued token and
+audits discovery metadata without acquiring credentials.

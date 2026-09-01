@@ -17,6 +17,7 @@ from mendpact.domain import (
 )
 from mendpact.drivers.replay import ReplayDriver
 from mendpact.scanner import scan_mcp_url
+from mendpact.security.auth import BearerAuthentication
 from mendpact.security.targets import TargetPolicy
 
 
@@ -77,6 +78,7 @@ async def guard_mcp_url(
     contract_failure_threshold: ContractImpact = ContractImpact.BREAKING,
     policy: TargetPolicy | None = None,
     applied_policy: PolicySnapshot | None = None,
+    authentication: BearerAuthentication | None = None,
 ) -> GuardReport:
     """Scan once, compare the contract, and replay only affected scenarios."""
 
@@ -85,6 +87,7 @@ async def guard_mcp_url(
         failure_threshold=scan_failure_threshold,
         policy=policy,
         applied_policy=applied_policy,
+        authentication=authentication,
     )
     if scan.status == ScanStatus.ERROR or scan.graph is None:
         return GuardReport(

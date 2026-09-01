@@ -64,6 +64,13 @@ def render_report(report: ScanReport, console: Console) -> None:
             f"Scan: {report.policy.scan_fail_on.value} | "
             f"Contract: {report.policy.contract_fail_on.value}"
         )
+    if report.authorization:
+        console.print(
+            "OAuth metadata: "
+            f"{report.authorization.status.value} | "
+            f"Authorization servers: {len(report.authorization.authorization_servers)} | "
+            "Credential source: environment"
+        )
 
     if report.errors:
         for error in report.errors:
