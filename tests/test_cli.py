@@ -125,7 +125,7 @@ def test_baseline_promote_requires_and_records_exact_review(tmp_path: Path) -> N
     )
 
     assert missing_acceptance.exit_code == 2
-    assert "--accept-scan-id" in missing_acceptance.stderr
+    assert "--accept-scan-id" in missing_acceptance.output
     assert promoted.exit_code == 0
     assert "Promoted baseline" in promoted.stdout
     assert json.loads(destination.read_text(encoding="utf-8"))["scan_id"] == (
