@@ -3,7 +3,8 @@
 MendPact's default development loop does not need paid model calls. Run mocked driver tests and
 saved replays on every commit, then use a small live-provider sample only when validating a model
 integration or preparing a release. The unified guard uses deterministic replay data and also
-costs $0 in provider usage. Selected tools are graded but never executed.
+costs $0 in provider usage. Comparing saved model reports with `mendpact compare-models` is also
+offline and free. Selected tools are graded but never executed.
 
 ## Recommended test ladder
 

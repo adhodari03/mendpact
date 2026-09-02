@@ -183,6 +183,29 @@ a one-sided proportion-test p-value as supporting statistical context; predictab
 remain the source of the CI exit code. See the included
 [`read-status` baseline](examples/baselines/read-status.json) for the JSON format.
 
+### Compare model runs offline
+
+Use saved behavior reports to decide whether a candidate model or model version preserves the
+reference model's tool-routing behavior:
+
+```bash
+mendpact compare-models \
+  reports/reference.json \
+  reports/candidate-a.json \
+  reports/candidate-b.json \
+  --max-overall-pass-rate-drop 0.02 \
+  --max-scenario-pass-rate-drop 0.05 \
+  --output model-comparison.json
+```
+
+The first report is the reference; every remaining report is compared with it. MendPact requires
+the same target, suite, scenario definitions, repetitions, and tool catalog so the result does not
+mix unrelated experiments. It reports overall and per-scenario pass-rate changes, selected-tool
+distributions, new wrong-tool confusion patterns, provider-resolved model names, token usage, and
+average measured latency. This command reads existing artifacts only: it does not connect to an
+MCP server, call a model provider, execute a tool, or incur provider cost. See the
+[model comparison guide](docs/MODEL_COMPARISON.md) for the validation rules and CI policy.
+
 ## MCP contract diff
 
 MendPact can compare two versioned scan reports without reconnecting to either MCP server. It
@@ -324,7 +347,7 @@ Exit codes are designed for CI:
 
 - `0`: the command completed and all configured checks passed;
 - `1`: the command completed and a scan, conformance check, or behavior trial failed;
-- `2`: validation, discovery, setup, replay data, or report writing failed.
+- `2`: validation, discovery, setup, replay data, comparison input, or report writing failed.
 
 ## Current checks
 

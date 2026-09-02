@@ -17,6 +17,7 @@ from mendpact.domain import (
     ContractDiffReport,
     ContractImpact,
     GuardReport,
+    ModelComparisonReport,
     RegressionImpact,
     ReplayPlan,
     ScanReport,
@@ -48,6 +49,13 @@ def write_contract_diff_report(report: ContractDiffReport, destination: Path) ->
 
 
 def write_guard_report(report: GuardReport, destination: Path) -> None:
+    destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+
+def write_model_comparison_report(
+    report: ModelComparisonReport,
+    destination: Path,
+) -> None:
     destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
 
 
@@ -401,3 +409,82 @@ def render_behavior_report(report: BehaviorReport, console: Console) -> None:
             " ".join(trial.grade.reasons),
         )
     console.print(table)
+
+
+def render_model_comparison_report(
+    report: ModelComparisonReport,
+    console: Console,
+) -> None:
+    """Render a compact model-by-model compatibility matrix."""
+
+    status_style = {
+        ScanStatus.PASSED: "bold green",
+        ScanStatus.FAILED: "bold red",
+        ScanStatus.ERROR: "bold red",
+    }[report.status]
+    console.print(
+        f"MendPact model comparison: [{status_style}]{report.status.value.upper()}[/]"
+    )
+    console.print(f"Target: {report.target}")
+    console.print(f"Suite: {report.suite_name}")
+    console.print(
+        f"Reference: {report.reference.driver}/{report.reference.model} | "
+        f"Pass rate: {report.reference.pass_rate:.1%} | "
+        f"Trials: {report.reference.trial_count}"
+    )
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Candidate", overflow="fold")
+    table.add_column("Status", width=8)
+    table.add_column("Pass rate", justify="right")
+    table.add_column("Delta", justify="right")
+    table.add_column("Tokens", justify="right")
+    table.add_column("Avg latency", justify="right")
+    for candidate, comparison in zip(
+        report.candidates,
+        report.comparisons,
+        strict=True,
+    ):
+        style = "green" if comparison.status == ScanStatus.PASSED else "red"
+        latency = (
+            f"{candidate.average_latency_ms:.0f} ms"
+            if candidate.average_latency_ms is not None
+            else "-"
+        )
+        table.add_row(
+            f"{candidate.driver}/{candidate.model}",
+            f"[{style}]{comparison.status.value.upper()}[/]",
+            f"{candidate.pass_rate:.1%}",
+            f"{comparison.pass_rate_delta:+.1%}",
+            str(candidate.total_tokens) if candidate.total_tokens else "-",
+            latency,
+        )
+    console.print(table)
+
+    findings = [
+        (candidate, finding)
+        for candidate, comparison in zip(
+            report.candidates,
+            report.comparisons,
+            strict=True,
+        )
+        for finding in comparison.findings
+    ]
+    if not findings:
+        console.print("[green]No model compatibility regressions.[/]")
+        return
+
+    findings_table = Table(show_header=True, header_style="bold")
+    findings_table.add_column("Impact", width=9)
+    findings_table.add_column("Rule", width=14)
+    findings_table.add_column("Candidate", overflow="fold")
+    findings_table.add_column("Finding", overflow="fold")
+    for candidate, finding in findings:
+        style = "red" if finding.impact == RegressionImpact.FAILURE else "yellow"
+        findings_table.add_row(
+            f"[{style}]{finding.impact.value.upper()}[/]",
+            finding.rule_id,
+            f"{candidate.driver}/{candidate.model}",
+            finding.message,
+        )
+    console.print(findings_table)

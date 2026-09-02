@@ -545,6 +545,115 @@ class BehaviorReport(BaseModel):
     errors: list[str] = Field(default_factory=list)
 
 
+class ModelScenarioSnapshot(BaseModel):
+    """Aggregated outcome for one scenario in one model run."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    scenario_id: str
+    scenario_name: str
+    expected_tool: str
+    trial_count: int = Field(ge=1)
+    passed_trials: int = Field(ge=0)
+    failed_trials: int = Field(ge=0)
+    pass_rate: float = Field(ge=0.0, le=1.0)
+    selection_counts: dict[str, int] = Field(default_factory=dict)
+
+
+class ModelRunSnapshot(BaseModel):
+    """Provider-neutral summary of one complete behavior report."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str
+    generated_at: datetime
+    driver: str
+    model: str
+    resolved_models: list[str] = Field(default_factory=list)
+    scenario_count: int = Field(ge=1)
+    trial_count: int = Field(ge=1)
+    passed_trials: int = Field(ge=0)
+    failed_trials: int = Field(ge=0)
+    pass_rate: float = Field(ge=0.0, le=1.0)
+    input_tokens: int = Field(ge=0)
+    output_tokens: int = Field(ge=0)
+    total_tokens: int = Field(ge=0)
+    measured_latency_trials: int = Field(ge=0)
+    average_latency_ms: float | None = Field(default=None, ge=0)
+    confusion_edges: list[ConfusionEdge] = Field(default_factory=list)
+    scenarios: list[ModelScenarioSnapshot] = Field(default_factory=list)
+
+
+class ModelComparisonThresholds(BaseModel):
+    """Deterministic failure policy for model-version comparisons."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_overall_pass_rate_drop: float = Field(default=0.0, ge=0.0, le=1.0)
+    max_scenario_pass_rate_drop: float = Field(default=0.0, ge=0.0, le=1.0)
+    allow_new_confusions: bool = False
+
+
+class ModelComparisonFinding(BaseModel):
+    """One compatibility difference between a reference and candidate run."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rule_id: str
+    impact: RegressionImpact
+    message: str
+    scenario_id: str | None = None
+    reference_value: Any = None
+    candidate_value: Any = None
+
+
+class ModelScenarioDelta(BaseModel):
+    """Per-scenario quality change for one candidate model."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    scenario_id: str
+    reference_pass_rate: float = Field(ge=0.0, le=1.0)
+    candidate_pass_rate: float = Field(ge=0.0, le=1.0)
+    pass_rate_delta: float = Field(ge=-1.0, le=1.0)
+    reference_selection_counts: dict[str, int] = Field(default_factory=dict)
+    candidate_selection_counts: dict[str, int] = Field(default_factory=dict)
+
+
+class ModelCandidateComparison(BaseModel):
+    """Compatibility result for one candidate against the reference run."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reference_run_id: str
+    candidate_run_id: str
+    status: ScanStatus
+    pass_rate_delta: float = Field(ge=-1.0, le=1.0)
+    new_confusion_edges: list[ConfusionEdge] = Field(default_factory=list)
+    scenarios: list[ModelScenarioDelta] = Field(default_factory=list)
+    findings: list[ModelComparisonFinding] = Field(default_factory=list)
+
+
+class ModelComparisonReport(BaseModel):
+    """Versioned offline comparison of provider-neutral behavior reports."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["mendpact.model-comparison.v1"] = (
+        "mendpact.model-comparison.v1"
+    )
+    comparison_id: str = Field(default_factory=lambda: str(uuid4()))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    target: str
+    suite_name: str
+    status: ScanStatus
+    thresholds: ModelComparisonThresholds
+    reference: ModelRunSnapshot
+    candidates: list[ModelRunSnapshot] = Field(min_length=1)
+    comparisons: list[ModelCandidateComparison] = Field(min_length=1)
+    errors: list[str] = Field(default_factory=list)
+
+
 class GuardSummary(BaseModel):
     """Stage-level outcome for one unified guard run."""
 

@@ -24,6 +24,7 @@ def test_help_lists_main_commands() -> None:
     assert result.exit_code == 0
     assert "conformance" in result.stdout
     assert "evaluate" in result.stdout
+    assert "compare-models" in result.stdout
     assert "diff" in result.stdout
     assert "guard" in result.stdout
     assert "init" in result.stdout

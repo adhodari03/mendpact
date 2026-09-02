@@ -97,6 +97,7 @@ pnpm-debug.log*
 /conformance-report*.json
 /behavior-report*.json
 /behavior-baseline*.json
+/model-comparison*.json
 /contract-diff*.json
 /guard-report*.json
 /candidate-scan*.json

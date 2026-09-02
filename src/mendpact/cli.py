@@ -30,6 +30,7 @@ from mendpact.contract_diff import diff_scan_reports, load_scan_report
 from mendpact.domain import (
     BehaviorThresholds,
     ContractImpact,
+    ModelComparisonThresholds,
     PolicySnapshot,
     ScanStatus,
     Severity,
@@ -41,6 +42,7 @@ from mendpact.drivers.openai import (
 )
 from mendpact.drivers.replay import ReplayDriver
 from mendpact.guard import guard_mcp_url
+from mendpact.model_comparison import compare_behavior_reports, load_behavior_report
 from mendpact.policy import PolicyConfigurationError, load_policy, target_policy
 from mendpact.project_init import ProjectInitializationError, initialize_project
 from mendpact.regression import (
@@ -55,6 +57,7 @@ from mendpact.reporting import (
     render_conformance_report,
     render_contract_diff_report,
     render_guard_report,
+    render_model_comparison_report,
     render_report,
     write_authorization_report,
     write_behavior_baseline,
@@ -63,6 +66,7 @@ from mendpact.reporting import (
     write_contract_diff_report,
     write_guard_report,
     write_json_report,
+    write_model_comparison_report,
     write_replay_plan,
 )
 from mendpact.scanner import scan_mcp_url
@@ -907,6 +911,85 @@ def evaluate(
 
     if report.status == ScanStatus.ERROR:
         raise typer.Exit(code=2)
+    if report.status == ScanStatus.FAILED:
+        raise typer.Exit(code=1)
+
+
+@app.command("compare-models")
+def compare_models(
+    reference: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Reference MendPact behavior report",
+        ),
+    ],
+    candidates: Annotated[
+        list[Path],
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="One or more candidate MendPact behavior reports",
+        ),
+    ],
+    max_overall_pass_rate_drop: Annotated[
+        float,
+        typer.Option(
+            min=0.0,
+            max=1.0,
+            help="Maximum candidate pass-rate drop from the reference",
+        ),
+    ] = 0.0,
+    max_scenario_pass_rate_drop: Annotated[
+        float,
+        typer.Option(
+            min=0.0,
+            max=1.0,
+            help="Maximum pass-rate drop allowed for any one scenario",
+        ),
+    ] = 0.0,
+    allow_new_confusions: Annotated[
+        bool,
+        typer.Option(
+            help="Report newly confused tool pairs as warnings instead of failures",
+        ),
+    ] = False,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Write the model comparison JSON report"),
+    ] = None,
+) -> None:
+    """Compare complete behavior reports without making provider API calls."""
+
+    try:
+        input_paths = {reference.resolve(), *(path.resolve() for path in candidates)}
+        if output is not None and output.resolve() in input_paths:
+            raise ValueError("--output cannot overwrite an input behavior report.")
+        report = compare_behavior_reports(
+            load_behavior_report(reference),
+            [load_behavior_report(path) for path in candidates],
+            ModelComparisonThresholds(
+                max_overall_pass_rate_drop=max_overall_pass_rate_drop,
+                max_scenario_pass_rate_drop=max_scenario_pass_rate_drop,
+                allow_new_confusions=allow_new_confusions,
+            ),
+        )
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]Could not compare model behavior:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    render_model_comparison_report(report, console)
+    if output is not None:
+        try:
+            write_model_comparison_report(report, output)
+        except OSError as exc:
+            console.print(f"[red]Could not write model comparison report:[/] {exc}")
+            raise typer.Exit(code=2) from exc
+        console.print(f"JSON report: {output}")
+
     if report.status == ScanStatus.FAILED:
         raise typer.Exit(code=1)
 

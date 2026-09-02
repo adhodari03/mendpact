@@ -15,6 +15,7 @@ execution, credentials, and stored evidence within explicit boundaries.
 - Only the initialization scenario runs without explicit tool-call authorization.
 - Behavioral replay discovers tool metadata but neither contacts a model nor invokes an MCP tool.
 - Live behavioral evaluation asks a provider to select a tool but does not execute that tool.
+- Model comparison reads local behavior-report JSON and makes no network request.
 
 ## Live model evaluation
 

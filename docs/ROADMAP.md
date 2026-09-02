@@ -53,9 +53,9 @@
 ## Milestone 0.6 — cross-provider matrix
 
 - Anthropic and Gemini drivers
-- provider and model snapshots
+- [x] provider and model snapshots from complete behavior reports
 - semantic grading calibrated against human labels
-- compatibility diff between agent versions and model versions
+- [x] offline compatibility comparison between model runs
 
 ## Milestone 0.7 — hosted beta
 
