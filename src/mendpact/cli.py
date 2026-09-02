@@ -14,6 +14,11 @@ from rich.console import Console
 
 from mendpact import __version__
 from mendpact.authorization import audit_oauth_metadata
+from mendpact.baseline import (
+    BaselineLifecycleError,
+    inspect_scan_baseline,
+    promote_scan_baseline,
+)
 from mendpact.behavior import (
     evaluate_mcp_url,
     load_behavior_suite,
@@ -45,6 +50,7 @@ from mendpact.regression import (
 )
 from mendpact.reporting import (
     render_authorization_report,
+    render_baseline_inspection,
     render_behavior_report,
     render_conformance_report,
     render_contract_diff_report,
@@ -73,6 +79,11 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
+baseline_app = typer.Typer(
+    help="Inspect and deliberately promote MCP contract baselines.",
+    no_args_is_help=True,
+)
+app.add_typer(baseline_app, name="baseline")
 
 
 class BehaviorDriver(StrEnum):
@@ -188,11 +199,18 @@ def initialize(
     for path in generated:
         console.print(f"  {path.relative_to(root)}")
     console.print("Review the example scenario before using guard mode.")
-    typer.echo("Capture the first reviewed baseline with:")
+    typer.echo("Capture the first baseline candidate with:")
     typer.echo(f"  cd {quote(str(root))}")
     typer.echo(
         f"  mendpact scan {quote(target)} --policy mendpact.toml "
-        "--output mendpact/baselines/baseline-scan.json"
+        "--output mendpact/candidates/candidate-scan.json"
+    )
+    typer.echo("Then inspect and deliberately promote that exact scan:")
+    typer.echo("  mendpact baseline inspect mendpact/candidates/candidate-scan.json")
+    typer.echo(
+        "  mendpact baseline promote mendpact/candidates/candidate-scan.json "
+        "mendpact/baselines/baseline-scan.json "
+        f"--accept-scan-id \"paste-scan-id-here\" --expected-target {quote(target)}"
     )
 
 
@@ -372,6 +390,87 @@ def authorization_check(
         raise typer.Exit(code=2)
     if report.status == ScanStatus.FAILED:
         raise typer.Exit(code=1)
+
+
+@baseline_app.command("inspect")
+def inspect_contract_baseline(
+    artifact: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="MendPact scan artifact to validate for baseline use",
+        ),
+    ],
+) -> None:
+    """Validate and identify a contract baseline without contacting its target."""
+
+    try:
+        inspection = inspect_scan_baseline(artifact)
+    except BaselineLifecycleError as exc:
+        console.print(f"[red]Invalid contract baseline:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    render_baseline_inspection(inspection, console)
+    if inspection.requires_failed_scan_acceptance:
+        raise typer.Exit(code=1)
+
+
+@baseline_app.command("promote")
+def promote_contract_baseline(
+    candidate: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Reviewed candidate scan artifact",
+        ),
+    ],
+    destination: Annotated[
+        Path,
+        typer.Argument(help="Versioned contract baseline destination"),
+    ],
+    accept_scan_id: Annotated[
+        str,
+        typer.Option(
+            "--accept-scan-id",
+            help="Exact candidate scan ID being approved",
+        ),
+    ],
+    expected_target: Annotated[
+        str | None,
+        typer.Option(help="Require an exact candidate target match"),
+    ] = None,
+    accept_failed_scan: Annotated[
+        bool,
+        typer.Option(
+            help="Explicitly approve a complete scan that failed its policy threshold"
+        ),
+    ] = False,
+    replace: Annotated[
+        bool,
+        typer.Option(help="Replace an existing baseline after review"),
+    ] = False,
+) -> None:
+    """Promote one exactly acknowledged scan to a committed contract baseline."""
+
+    try:
+        inspection = promote_scan_baseline(
+            candidate,
+            destination,
+            accepted_scan_id=accept_scan_id,
+            expected_target=expected_target,
+            accept_failed_scan=accept_failed_scan,
+            replace=replace,
+        )
+    except BaselineLifecycleError as exc:
+        console.print(f"[red]Could not promote contract baseline:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    render_baseline_inspection(inspection, console)
+    console.print(f"[green]Promoted baseline:[/] {destination}")
 
 
 @app.command("diff")

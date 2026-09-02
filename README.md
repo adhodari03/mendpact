@@ -46,15 +46,16 @@ Create a production-safe policy and GitHub scan workflow in an application repos
 mendpact init --target https://api.example.com/mcp
 ```
 
-The command creates `mendpact.toml`, `.github/workflows/mendpact.yml`, an empty baseline
-directory, and a clearly labeled example scenario. It refuses plaintext HTTP, URL credentials,
-query strings, and fragments because the target is committed to the workflow. Existing generated
-files are never replaced unless `--force` is supplied.
+The command creates `mendpact.toml`, `.github/workflows/mendpact.yml`, an empty baseline directory,
+an ignored local candidate directory, and a clearly labeled example scenario. It refuses plaintext
+HTTP, URL credentials, query strings, and fragments because the target is committed to the
+workflow. Existing generated files are never replaced unless `--force` is supplied.
 
 The generated workflow starts in deterministic scan mode and uses production policy defaults.
-MendPact does not invent a baseline or activate the example behavior scenario. Review the first
-scan, save it as `mendpact/baselines/baseline-scan.json`, replace the example with real behavior,
-and then deliberately upgrade the workflow to guard mode.
+MendPact does not invent a baseline or activate the example behavior scenario. Capture the first
+scan as a candidate, inspect its exact identity, deliberately promote it into
+`mendpact/baselines/baseline-scan.json`, replace the example with real behavior, and then upgrade
+the workflow to guard mode.
 
 ### Authenticated production targets
 
@@ -204,6 +205,25 @@ IDs. The example intentionally exits with code `1` under the strict `risky` thre
 the tool description changed. The command is deterministic and makes no model-provider or MCP
 network request. See the [contract-diff rule reference](docs/CONTRACT_DIFF.md) for the complete
 classification policy.
+
+### Contract baseline lifecycle
+
+Treat a newly captured scan as a candidate until its exact identity and target have been reviewed:
+
+```bash
+mendpact baseline inspect mendpact/candidates/candidate-scan.json
+
+mendpact baseline promote \
+  mendpact/candidates/candidate-scan.json \
+  mendpact/baselines/baseline-scan.json \
+  --accept-scan-id "paste-the-reviewed-scan-id" \
+  --expected-target https://api.example.com/mcp
+```
+
+Promotion requires a complete MCP capability graph, refuses accidental replacement and symlink
+destinations, and writes a canonical baseline atomically. A scan that failed its own policy needs
+the additional `--accept-failed-scan` acknowledgement. See the
+[baseline lifecycle guide](docs/BASELINES.md) for initial capture and controlled replacement.
 
 ## Unified CI guard
 
