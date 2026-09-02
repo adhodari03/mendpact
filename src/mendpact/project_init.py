@@ -122,6 +122,7 @@ jobs:
         ProjectFile(Path(".github/workflows/mendpact.yml"), workflow),
         ProjectFile(Path("mendpact/scenarios.example.json"), scenario),
         ProjectFile(Path("mendpact/baselines/.gitkeep"), ""),
+        ProjectFile(Path("mendpact/candidates/.gitignore"), "*\n!.gitignore\n"),
     )
 
 

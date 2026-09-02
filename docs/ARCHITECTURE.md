@@ -49,6 +49,11 @@ changes, and joins tool changes with behavior expectations to calculate a scenar
 This makes compatibility review reproducible in pull requests and independent of model-provider
 availability.
 
+The contract baseline lifecycle separates machine capture from human trust. Inspection validates
+the scan schema and graph structure and exposes a canonical digest. Promotion requires the exact
+scan ID and optionally the exact deployment target, then atomically writes canonical JSON. Failed
+scans and baseline replacement each require their own explicit acknowledgement.
+
 The guard orchestrator is the CI composition boundary. It scans once, feeds the resulting graph
 to contract comparison, selects affected scenarios, and evaluates deterministic replays against
 that same in-memory graph. The versioned guard report embeds each stage's evidence instead of
@@ -99,6 +104,7 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `grading.py` validates selected tools, arguments, and behavioral expectations.
 - `regression.py` creates versioned baselines and evaluates compatibility thresholds.
 - `contract_diff.py` compares scan graphs and maps changes to affected behavior scenarios.
+- `baseline.py` validates and deliberately promotes contract baseline candidates.
 - `guard.py` composes scanning, contract comparison, and affected replay evaluation.
 - `reporting.py` renders stable machine and human interfaces.
 - `security/` rejects unsafe targets before network access.

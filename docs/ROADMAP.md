@@ -48,6 +48,7 @@
 - [x] one-command project initialization
 - [x] authenticated production targets and OAuth metadata checks
 - [x] credential-free OAuth deployment preflight and Action mode
+- [x] reviewed contract baseline inspection and promotion lifecycle
 
 ## Milestone 0.6 — cross-provider matrix
 

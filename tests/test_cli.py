@@ -8,6 +8,7 @@ from mendpact.cli import app
 from mendpact.domain import (
     CapabilityGraph,
     CapabilityNode,
+    Finding,
     NodeKind,
     ScanReport,
     ScanStatus,
@@ -27,6 +28,108 @@ def test_help_lists_main_commands() -> None:
     assert "guard" in result.stdout
     assert "init" in result.stdout
     assert "auth-check" in result.stdout
+    assert "baseline" in result.stdout
+
+
+def _write_contract_scan(
+    path: Path,
+    *,
+    status: ScanStatus = ScanStatus.PASSED,
+) -> ScanReport:
+    report = ScanReport(
+        scan_id="cli-reviewed-scan",
+        target="https://api.example.com/mcp",
+        status=status,
+        failure_threshold=Severity.HIGH,
+        findings=(
+            [
+                Finding(
+                    rule_id="MP-TEST-001",
+                    severity=Severity.HIGH,
+                    title="Reviewed finding",
+                    message="The candidate reached its policy threshold.",
+                    subject="tool:read_status",
+                )
+            ]
+            if status == ScanStatus.FAILED
+            else []
+        ),
+        graph=CapabilityGraph(
+            target="https://api.example.com/mcp",
+            protocol_version="2026-07-28",
+            server_name="fixture",
+            nodes=[
+                CapabilityNode(
+                    id="server:fixture",
+                    kind=NodeKind.SERVER,
+                    name="fixture",
+                ),
+                CapabilityNode(
+                    id="tool:read_status",
+                    kind=NodeKind.TOOL,
+                    name="read_status",
+                ),
+            ],
+        ),
+    )
+    path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+    return report
+
+
+def test_baseline_inspect_prints_review_identity(tmp_path: Path) -> None:
+    artifact = tmp_path / "candidate.json"
+    _write_contract_scan(artifact)
+
+    result = runner.invoke(app, ["baseline", "inspect", str(artifact)])
+
+    assert result.exit_code == 0
+    assert "contract baseline: VALID" in result.stdout
+    assert "cli-reviewed-scan" in result.stdout
+    assert "Canonical SHA-256" in result.stdout
+    assert "Tools: 1" in result.stdout
+
+
+def test_baseline_inspect_surfaces_failed_candidate(tmp_path: Path) -> None:
+    artifact = tmp_path / "candidate.json"
+    _write_contract_scan(artifact, status=ScanStatus.FAILED)
+
+    result = runner.invoke(app, ["baseline", "inspect", str(artifact)])
+
+    assert result.exit_code == 1
+    assert "Scan status: FAILED" in result.stdout
+    assert "Review required" in result.stdout
+
+
+def test_baseline_promote_requires_and_records_exact_review(tmp_path: Path) -> None:
+    candidate = tmp_path / "candidate.json"
+    _write_contract_scan(candidate)
+    destination = tmp_path / "baseline.json"
+
+    missing_acceptance = runner.invoke(
+        app,
+        ["baseline", "promote", str(candidate), str(destination)],
+    )
+    promoted = runner.invoke(
+        app,
+        [
+            "baseline",
+            "promote",
+            str(candidate),
+            str(destination),
+            "--accept-scan-id",
+            "cli-reviewed-scan",
+            "--expected-target",
+            "https://api.example.com/mcp",
+        ],
+    )
+
+    assert missing_acceptance.exit_code == 2
+    assert "--accept-scan-id" in missing_acceptance.stderr
+    assert promoted.exit_code == 0
+    assert "Promoted baseline" in promoted.stdout
+    assert json.loads(destination.read_text(encoding="utf-8"))["scan_id"] == (
+        "cli-reviewed-scan"
+    )
 
 
 def test_init_creates_production_safe_scaffold(tmp_path: Path) -> None:
@@ -54,7 +157,13 @@ def test_init_creates_production_safe_scaffold(tmp_path: Path) -> None:
     assert "retention-days: 14" in workflow
     assert "EXAMPLE" in scenario["name"]
     assert (project / "mendpact/baselines/.gitkeep").is_file()
+    assert (project / "mendpact/candidates/.gitignore").read_text(
+        encoding="utf-8"
+    ) == "*\n!.gitignore\n"
     assert "Review the example scenario" in result.stdout
+    assert "mendpact baseline inspect" in result.stdout
+    assert "mendpact baseline promote" in result.stdout
+    assert "--accept-scan-id" in result.stdout
 
 
 def test_init_refuses_collisions_before_writing_any_file(tmp_path: Path) -> None:

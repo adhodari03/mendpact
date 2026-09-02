@@ -32,9 +32,9 @@ mendpact init --target https://api.example.com/mcp
 
 The generated workflow uses `v0.3.0` in scan mode, uploads the machine report for 14 days, and
 grants only read access to repository contents. The initializer remains offline: it creates an
-empty baseline directory and a labeled example scenario but does not contact the target, invent a
-baseline, or enable guard mode. Use `--force` only after reviewing the generated-file collisions
-reported by the command.
+empty baseline directory, an ignored local candidate directory, and a labeled example scenario but
+does not contact the target, invent a baseline, or enable guard mode. Use `--force` only after
+reviewing the generated-file collisions reported by the command.
 
 ## Authenticated target
 
@@ -177,6 +177,10 @@ The Action returns the configured paths as `report` and `candidate-scan` outputs
 use the fixed configured path for `if: always()` artifact upload so a failure report can still be
 collected. The Action deliberately does not upload artifacts itself, allowing the consuming
 workflow to choose retention, permissions, and naming policy.
+
+`save-scan` is a candidate artifact, not an automatically trusted baseline. Download it, run
+`mendpact baseline inspect`, review its target, scan ID, status, capabilities, and digest, then use
+`mendpact baseline promote` in a separate change. See [contract baseline lifecycle](BASELINES.md).
 
 Private and insecure HTTP targets remain blocked by default. `allow-private` and
 `allow-insecure-http` exist only for deliberate test environments, usually on a self-hosted

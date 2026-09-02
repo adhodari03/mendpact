@@ -7,6 +7,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
+from mendpact.baseline import BaselineInspection
 from mendpact.domain import (
     AuthorizationAuditReport,
     BehaviorBaseline,
@@ -58,6 +59,30 @@ def write_replay_plan(plan: ReplayPlan, destination: Path) -> None:
     destination.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
 
 
+def render_baseline_inspection(
+    inspection: BaselineInspection,
+    console: Console,
+) -> None:
+    report = inspection.report
+    console.print("MendPact contract baseline: [bold green]VALID[/]")
+    console.print(f"Scan ID: {report.scan_id}")
+    console.print(f"Target: {report.target}")
+    console.print(f"Captured: {report.generated_at.isoformat()}")
+    console.print(f"Scan status: {report.status.value.upper()}")
+    console.print(f"Canonical SHA-256: {inspection.canonical_sha256}")
+    if report.graph:
+        console.print(
+            f"Protocol: MCP {report.graph.protocol_version or 'unknown'} | "
+            f"Tools: {inspection.tool_count} | "
+            f"Resources: {inspection.resource_count} | "
+            f"Prompts: {inspection.prompt_count}"
+        )
+    if inspection.requires_failed_scan_acceptance:
+        console.print(
+            "[yellow]Review required:[/] The scan failed its configured policy threshold."
+        )
+
+
 def render_report(report: ScanReport, console: Console) -> None:
     status_style = {
         ScanStatus.PASSED: "bold green",
@@ -65,6 +90,7 @@ def render_report(report: ScanReport, console: Console) -> None:
         ScanStatus.ERROR: "bold red",
     }[report.status]
     console.print(f"MendPact scan: [{status_style}]{report.status.value.upper()}[/]")
+    console.print(f"Scan ID: {report.scan_id}")
     console.print(f"Target: {report.target}")
     if report.policy:
         console.print(

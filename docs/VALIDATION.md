@@ -220,3 +220,21 @@ The passing metadata path was exercised with an in-memory HTTP transport and rea
 protected-resource, and authorization-server documents. No third-party endpoint, bearer token,
 model provider, API key, or paid request was used. Live interoperability with a deployed HTTPS MCP
 authorization server remains a pre-release validation task.
+
+## Contract baseline lifecycle validation
+
+Date: September 2, 2026
+
+The baseline inspection and promotion workflow was checked with the complete 178-test project
+suite, Ruff, and strict MyPy. Tests cover formatting-independent canonical digests, capability
+counts, incomplete and error scans, target/graph mismatch, non-MCP graphs, missing server identity,
+duplicate node IDs, dangling edges, status/threshold consistency, exact scan-ID acknowledgement,
+exact expected-target matching,
+separate failed-scan acceptance, controlled replacement, missing destination directories, symlink
+refusal, canonical output, and the nested CLI commands.
+
+An offline CLI smoke used the committed Guard fixture baseline. MendPact inspected its identity,
+promoted it into a temporary directory using the exact scan ID and target, then inspected the
+promoted result again. The canonical digest remained identical and the two-tool MCP inventory was
+preserved. No MCP connection, tool execution, model provider, API key, bearer token, or paid request
+was used.
