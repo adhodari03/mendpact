@@ -65,7 +65,12 @@ def replay_plan_from_report(report: BehaviorReport) -> ReplayPlan:
     )
 
 
-def _summary(suite: BehaviorSuite, trials: list[BehaviorTrial]) -> BehaviorSummary:
+def summarize_behavior(
+    suite: BehaviorSuite,
+    trials: list[BehaviorTrial],
+) -> BehaviorSummary:
+    """Build the deterministic aggregate for a complete or partial behavior run."""
+
     passed_trials = sum(trial.grade.passed for trial in trials)
     confusion_counts = Counter(
         (trial.scenario.expectation.tool, trial.trace.selected_tool)
@@ -126,11 +131,11 @@ async def evaluate_capability_graph(
             repetitions=repetitions,
             tool_catalog=sorted(tool.name for tool in tools),
             trials=trials,
-            summary=_summary(suite, trials),
+            summary=summarize_behavior(suite, trials),
             errors=[f"{type(exc).__name__}: {exc}"],
         )
 
-    summary = _summary(suite, trials)
+    summary = summarize_behavior(suite, trials)
     return BehaviorReport(
         target=target,
         status=ScanStatus.FAILED if summary.failed_trials else ScanStatus.PASSED,

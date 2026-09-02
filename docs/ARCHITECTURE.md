@@ -43,6 +43,21 @@ raw trial evidence, threshold findings, and a one-sided pass-rate statistic; con
 thresholds determine the exit code. A failed comparison cannot be promoted accidentally when a
 baseline is loaded and saved in the same command.
 
+The model-comparison layer consumes complete behavior reports rather than contacting providers
+again. It verifies trial shape, scenario definitions, tool catalogs, provider metadata, and
+recomputed summaries before allowing a comparison:
+
+```text
+reference behavior report ----+
+                              +--> integrity + comparability checks --> model matrix report
+candidate behavior reports ---+                                      +--> CI exit status
+```
+
+Each candidate keeps aggregate telemetry and per-scenario tool-selection distributions. Strict
+overall, per-scenario, and new-confusion rules prevent an improvement in one scenario from hiding
+a regression in another. The output is provider-neutral, so future drivers can participate
+without changing the comparison engine.
+
 Contract intelligence compares two completed scan artifacts rather than contacting their
 targets again. It matches capabilities by stable graph node ID, classifies structural and schema
 changes, and joins tool changes with behavior expectations to calculate a scenario blast radius.
@@ -103,6 +118,7 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `argument_matching.py` applies scenario-approved string normalization to copied arguments.
 - `grading.py` validates selected tools, arguments, and behavioral expectations.
 - `regression.py` creates versioned baselines and evaluates compatibility thresholds.
+- `model_comparison.py` validates and compares complete model behavior artifacts offline.
 - `contract_diff.py` compares scan graphs and maps changes to affected behavior scenarios.
 - `baseline.py` validates and deliberately promotes contract baseline candidates.
 - `guard.py` composes scanning, contract comparison, and affected replay evaluation.

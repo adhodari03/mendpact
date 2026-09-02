@@ -238,3 +238,19 @@ promoted it into a temporary directory using the exact scan ID and target, then 
 promoted result again. The canonical digest remained identical and the two-tool MCP inventory was
 preserved. No MCP connection, tool execution, model provider, API key, bearer token, or paid request
 was used.
+
+## Offline model comparison validation
+
+Date: September 2, 2026
+
+The provider-neutral model comparison was checked with the complete 188-test project suite, Ruff,
+strict MyPy, and diff whitespace validation. Tests cover matching runs, provider-resolved model
+identity, token and latency snapshots, overall regression, per-scenario regression that aggregate
+scores would hide, multiple independent candidates, new confusion pairs, explicit warning policy,
+tampered summaries, contradictory attempts and grades, incomparable targets, duplicate run IDs,
+JSON output, CI exit codes, and output/input overwrite protection.
+
+The CLI path was exercised through its test runner using complete `mendpact.behavior.v1` artifacts.
+It produced a `mendpact.model-comparison.v1` artifact and returned exit `1` for a deliberately
+regressed candidate while retaining all findings. No MCP connection, tool execution, model
+provider, API key, or paid request was used.
