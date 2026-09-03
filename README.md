@@ -273,8 +273,9 @@ policy.
 ## GitHub Action
 
 MendPact can run as a composite GitHub Action. Scan mode remains the default for backward
-compatibility, `auth` mode performs a credential-free OAuth preflight, and guard mode runs the
-complete scan, contract, and affected-replay workflow.
+compatibility, `auth` mode performs a credential-free OAuth preflight, guard mode runs the
+complete scan, contract, and affected-replay workflow, and `compare-models` evaluates saved
+behavior reports entirely offline.
 
 ```yaml
 - id: mendpact
@@ -294,6 +295,24 @@ candidate-scan paths so the consuming workflow controls artifact upload and rete
 exact full commit SHA when an immutable reference with stronger supply-chain guarantees is
 required. See the [GitHub Action guide](docs/GITHUB_ACTION.md) for complete authorization, scan,
 and guard workflows.
+
+To block a model upgrade that regresses saved behavior evidence:
+
+```yaml
+- id: mendpact-model-comparison
+  uses: adhodari03/mendpact@v0.3.0
+  with:
+    mode: compare-models
+    reference-report: mendpact/reference-behavior.json
+    candidate-report: mendpact/candidate-behavior.json
+    max-overall-pass-rate-drop: "0.02"
+    max-scenario-pass-rate-drop: "0.05"
+    output: mendpact-model-comparison.json
+```
+
+This mode does not accept or require a target, policy, credential, or network allowance. Its job
+summary displays the comparison policy, reference and candidate metrics, and compatibility
+findings. The JSON report remains the complete evidence artifact.
 
 ## Policy as code
 
