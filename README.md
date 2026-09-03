@@ -331,9 +331,10 @@ To block a model upgrade that regresses saved behavior evidence:
     output: mendpact-model-comparison.json
 ```
 
-This mode does not accept or require a target, policy, credential, or network allowance. Its job
-summary displays the comparison policy, reference and candidate metrics, and compatibility
-findings. The JSON report remains the complete evidence artifact.
+This mode does not accept or require a target, credential, or network allowance. Supply a
+`mendpact.policy.v2` file to own its thresholds, or use the individual inputs shown above. Its job
+summary displays the applied policy, reference and candidate metrics, and compatibility findings.
+The JSON report remains the complete evidence artifact.
 
 Semantic calibration can run through the same Action:
 
@@ -342,18 +343,16 @@ Semantic calibration can run through the same Action:
   with:
     mode: calibrate-grader
     semantic-labels: mendpact/semantic-labels.json
-    min-calibration-examples: "20"
-    min-validation-examples: "20"
-    min-validation-balanced-accuracy: "0.90"
-    max-validation-false-accept-rate: "0.02"
+    policy: mendpact.toml
     output: mendpact-semantic-calibration.json
 ```
 
 ## Policy as code
 
-MendPact can load reviewed production or local settings from a versioned TOML policy. Production
-policies fail on `high` scan findings and `risky` contract changes by default, and cannot enable
-private targets or plaintext HTTP.
+MendPact can load reviewed production or local settings from a versioned TOML policy. Policy v2
+owns scan, contract, model-comparison, and semantic-calibration gates. Production policies cannot
+enable private targets, plaintext HTTP, permissive model regressions, new confusion pairs, or weak
+semantic-calibration evidence.
 
 ```bash
 mendpact guard https://api.example/mcp \

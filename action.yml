@@ -15,7 +15,7 @@ inputs:
     required: false
     default: ""
   policy:
-    description: Versioned TOML policy that owns thresholds and target allowances.
+    description: Versioned TOML policy; v2 also owns comparison and calibration gates.
     required: false
     default: ""
   auth-token-env:
@@ -75,37 +75,37 @@ inputs:
     required: false
     default: ""
   max-overall-pass-rate-drop:
-    description: Maximum overall pass-rate drop allowed in compare-models mode.
+    description: Maximum overall pass-rate drop without a v2 policy; defaults to zero.
     required: false
-    default: "0"
+    default: ""
   max-scenario-pass-rate-drop:
-    description: Maximum per-scenario pass-rate drop allowed in compare-models mode.
+    description: Maximum scenario pass-rate drop without a v2 policy; defaults to zero.
     required: false
-    default: "0"
+    default: ""
   allow-new-confusions:
-    description: Treat new wrong-tool confusion pairs as warnings in compare-models mode.
+    description: Treat new confusion pairs as warnings without a v2 policy; defaults to false.
     required: false
-    default: "false"
+    default: ""
   semantic-labels:
     description: Human-labelled semantic-score dataset required by calibrate-grader mode.
     required: false
     default: ""
   min-calibration-examples:
-    description: Minimum calibration-split examples required by calibrate-grader mode.
+    description: Minimum calibration examples without a v2 policy; defaults to four.
     required: false
-    default: "4"
+    default: ""
   min-validation-examples:
-    description: Minimum validation-split examples required by calibrate-grader mode.
+    description: Minimum validation examples without a v2 policy; defaults to four.
     required: false
-    default: "4"
+    default: ""
   min-validation-balanced-accuracy:
-    description: Minimum validation balanced accuracy required by calibrate-grader mode.
+    description: Minimum validation balanced accuracy without a v2 policy; defaults to 0.8.
     required: false
-    default: "0.8"
+    default: ""
   max-validation-false-accept-rate:
-    description: Maximum validation false-accept rate allowed by calibrate-grader mode.
+    description: Maximum validation false-accept rate without a v2 policy; defaults to 0.1.
     required: false
-    default: "0.1"
+    default: ""
 
 outputs:
   report:

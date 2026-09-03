@@ -356,3 +356,158 @@ def test_cli_refuses_to_overwrite_an_input(tmp_path: Path) -> None:
 
     assert result.exit_code == 2
     assert "cannot overwrite" in result.stdout
+
+
+def test_cli_uses_v2_policy_for_model_comparison(tmp_path: Path) -> None:
+    reference_path = tmp_path / "reference.json"
+    candidate_path = tmp_path / "candidate.json"
+    output_path = tmp_path / "comparison.json"
+    policy_path = tmp_path / "mendpact.toml"
+    reference_path.write_text(
+        _report(
+            {"read-status": ["read_status"]},
+            run_id="reference",
+            model="model-a",
+        ).model_dump_json(),
+        encoding="utf-8",
+    )
+    candidate_path.write_text(
+        _report(
+            {"read-status": ["delete_project"]},
+            run_id="candidate",
+            model="model-b",
+        ).model_dump_json(),
+        encoding="utf-8",
+    )
+    policy_path.write_text(
+        '\n'.join(
+            [
+                'schema_version = "mendpact.policy.v2"',
+                'name = "model-upgrade"',
+                'profile = "local"',
+                '',
+                '[model_comparison]',
+                'max_overall_pass_rate_drop = 1.0',
+                'max_scenario_pass_rate_drop = 1.0',
+                'allow_new_confusions = true',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-models",
+            str(reference_path),
+            str(candidate_path),
+            "--policy",
+            str(policy_path),
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["policy"]["schema_version"] == "mendpact.policy.v2"
+    assert payload["policy"]["name"] == "model-upgrade"
+    assert payload["thresholds"]["max_overall_pass_rate_drop"] == 1.0
+    assert payload["thresholds"]["allow_new_confusions"] is True
+
+
+def test_cli_rejects_v1_or_explicit_overrides_for_model_policy(tmp_path: Path) -> None:
+    reference_path = tmp_path / "reference.json"
+    candidate_path = tmp_path / "candidate.json"
+    for path, run_id, model in (
+        (reference_path, "reference", "model-a"),
+        (candidate_path, "candidate", "model-b"),
+    ):
+        path.write_text(
+            _report(
+                {"read-status": ["read_status"]},
+                run_id=run_id,
+                model=model,
+            ).model_dump_json(),
+            encoding="utf-8",
+        )
+    policy_path = tmp_path / "mendpact.toml"
+    policy_path.write_text(
+        'schema_version = "mendpact.policy.v1"\nname = "legacy"\nprofile = "local"\n',
+        encoding="utf-8",
+    )
+
+    legacy = runner.invoke(
+        app,
+        [
+            "compare-models",
+            str(reference_path),
+            str(candidate_path),
+            "--policy",
+            str(policy_path),
+        ],
+    )
+    policy_path.write_text(
+        'schema_version = "mendpact.policy.v2"\nname = "current"\nprofile = "local"\n',
+        encoding="utf-8",
+    )
+    override = runner.invoke(
+        app,
+        [
+            "compare-models",
+            str(reference_path),
+            str(candidate_path),
+            "--policy",
+            str(policy_path),
+            "--max-overall-pass-rate-drop",
+            "0.1",
+        ],
+    )
+
+    assert legacy.exit_code == 2
+    assert "requires schema_version" in legacy.stdout
+    assert "mendpact.policy.v2" in legacy.stdout
+    assert override.exit_code == 2
+    assert "--policy cannot be combined" in override.stdout
+    assert "--max-overall-pass-rate-drop" in override.stdout
+
+
+def test_cli_model_comparison_does_not_overwrite_policy(tmp_path: Path) -> None:
+    reference_path = tmp_path / "reference.json"
+    candidate_path = tmp_path / "candidate.json"
+    for path, run_id, model in (
+        (reference_path, "reference", "model-a"),
+        (candidate_path, "candidate", "model-b"),
+    ):
+        path.write_text(
+            _report(
+                {"read-status": ["read_status"]},
+                run_id=run_id,
+                model=model,
+            ).model_dump_json(),
+            encoding="utf-8",
+        )
+    policy_path = tmp_path / "mendpact.toml"
+    source = (
+        'schema_version = "mendpact.policy.v2"\n'
+        'name = "current"\n'
+        'profile = "local"\n'
+    )
+    policy_path.write_text(source, encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "compare-models",
+            str(reference_path),
+            str(candidate_path),
+            "--policy",
+            str(policy_path),
+            "--output",
+            str(policy_path),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "cannot overwrite" in result.stdout
+    assert policy_path.read_text(encoding="utf-8") == source

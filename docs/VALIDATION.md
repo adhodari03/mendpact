@@ -291,3 +291,23 @@ The fixture proves the mechanics and is deliberately labelled as an example, not
 benchmark. MendPact consumed already-saved semantic scores; it did not generate those scores,
 contact a model provider or MCP endpoint, load a credential, execute a tool, or incur a paid
 operation.
+
+## Unified reliability policy v2 validation
+
+Date: September 3, 2026
+
+Policy v2 was checked with the complete 225-test project suite, Ruff, strict MyPy, Bash syntax
+validation, Action/workflow YAML parsing, and diff whitespace validation. Tests cover v1 backward
+compatibility, rejection of v2-only sections under a v1 schema, resolved local and production
+defaults, explicit nested gates, production safety ceilings, CLI policy/option conflicts, policy
+file overwrite protection, Action argument construction, embedded policy evidence, and GitHub job
+summary rendering.
+
+Offline CLI and Action-shell smoke runs applied the committed local v2 fixture to both model
+comparison and semantic calibration. All four paths passed, retained the v2 policy identity and
+source digest in their JSON reports, and rendered the applied policy in their summaries. The
+project initializer and committed production example now generate the reviewed v2 sections.
+
+No MCP endpoint, model provider, credential, tool execution, network request, or paid operation was
+used. The local fixture is explicitly test-only. Production parsing independently enforces the
+documented model-regression, confusion, sample-size, balanced-accuracy, and false-accept limits.

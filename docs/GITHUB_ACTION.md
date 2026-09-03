@@ -212,8 +212,7 @@ jobs:
           mode: compare-models
           reference-report: mendpact/reference-behavior.json
           candidate-report: mendpact/candidate-behavior.json
-          max-overall-pass-rate-drop: "0.02"
-          max-scenario-pass-rate-drop: "0.05"
+          policy: mendpact.toml
           output: mendpact-model-comparison.json
       - if: always()
         uses: actions/upload-artifact@v6
@@ -226,10 +225,11 @@ jobs:
 
 `target` is intentionally optional in Action metadata and remains required at runtime for auth,
 scan, and guard modes. Comparison mode instead requires `reference-report` and `candidate-report`.
-It rejects target, policy, authentication, and target-network allowance inputs because it only
-reads local JSON. New confusion pairs fail by default; set `allow-new-confusions: "true"` to keep
-them as warnings. Run separate Action steps when one reference must be compared with several
-candidates, or use the CLI's multi-candidate form.
+It rejects target, authentication, and target-network allowance inputs because it only reads local
+JSON. A `mendpact.policy.v2` file can own the comparison gates. Without policy, the individual
+threshold inputs retain their original defaults. Do not combine policy with those inputs; new
+confusion pairs fail by default. Run separate Action steps when one reference must be compared with
+several candidates, or use the CLI's multi-candidate form.
 
 The Action summary includes the configured thresholds, both model snapshots, the signed pass-rate
 delta, token and latency observations, and bounded compatibility annotations. It returns the JSON
@@ -261,10 +261,7 @@ jobs:
         with:
           mode: calibrate-grader
           semantic-labels: mendpact/semantic-labels.json
-          min-calibration-examples: "20"
-          min-validation-examples: "20"
-          min-validation-balanced-accuracy: "0.90"
-          max-validation-false-accept-rate: "0.02"
+          policy: mendpact.toml
           output: mendpact-semantic-calibration.json
       - if: always()
         uses: actions/upload-artifact@v6
@@ -275,10 +272,11 @@ jobs:
           retention-days: 14
 ```
 
-Calibration mode requires `semantic-labels` and rejects target, policy, authentication, and
-target-network allowance inputs. It reads local JSON and does not contact the semantic grader,
-an MCP endpoint, or a model provider. The summary shows the selected threshold, quality policy,
-calibration and validation metrics, findings, and bounded human/grader disagreements. See
+Calibration mode requires `semantic-labels` and rejects target, authentication, and target-network
+allowance inputs. A `mendpact.policy.v2` file can own the evidence and quality gates; otherwise,
+use the individual calibration inputs. It reads local JSON and does not contact the semantic
+grader, an MCP endpoint, or a model provider. The summary shows the selected threshold, quality
+policy, calibration and validation metrics, findings, and bounded human/grader disagreements. See
 [semantic grader calibration](SEMANTIC_CALIBRATION.md) for the input contract and limitations.
 
 Private and insecure HTTP targets remain blocked by default. `allow-private` and

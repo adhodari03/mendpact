@@ -9,6 +9,7 @@ from pathlib import Path
 from mendpact.domain import (
     CalibrationSplit,
     HumanLabel,
+    PolicySnapshot,
     RegressionImpact,
     ScanStatus,
     SemanticCalibrationDisagreement,
@@ -143,6 +144,8 @@ def _disagreements(
 def calibrate_semantic_grader(
     label_set: SemanticLabelSet,
     policy: SemanticCalibrationPolicy | None = None,
+    *,
+    source_policy: PolicySnapshot | None = None,
 ) -> SemanticCalibrationReport:
     """Fit on calibration labels and measure the selected threshold on validation labels."""
 
@@ -212,6 +215,7 @@ def calibrate_semantic_grader(
         grader=label_set.grader,
         grader_version=label_set.grader_version,
         selected_threshold=threshold,
+        source_policy=source_policy,
         policy=applied_policy,
         calibration=calibration_metrics,
         validation=validation_metrics,

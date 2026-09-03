@@ -435,6 +435,11 @@ def render_model_comparison_report(
     )
     console.print(f"Target: {report.target}")
     console.print(f"Suite: {report.suite_name}")
+    if report.policy:
+        console.print(
+            f"Policy: {report.policy.name} ({report.policy.schema_version}, "
+            f"{report.policy.profile.value})"
+        )
     console.print(
         f"Reference: {report.reference.driver}/{report.reference.model} | "
         f"Pass rate: {report.reference.pass_rate:.1%} | "
@@ -516,6 +521,11 @@ def render_semantic_calibration_report(
         f"Label set: {report.label_set_name} | "
         f"Grader: {report.grader}/{report.grader_version}"
     )
+    if report.source_policy:
+        console.print(
+            f"Policy: {report.source_policy.name} ({report.source_policy.schema_version}, "
+            f"{report.source_policy.profile.value})"
+        )
     console.print(
         f"Selected threshold: {report.selected_threshold:.3f} | "
         f"Dataset SHA-256: {report.label_set_sha256}"

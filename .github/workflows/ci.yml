@@ -42,6 +42,7 @@ jobs:
           mode: compare-models
           reference-report: examples/model-comparison/reference-behavior.json
           candidate-report: examples/model-comparison/candidate-behavior.json
+          policy: examples/policies/local-reliability.toml
           output: model-comparison-report.json
       - name: Verify model comparison Action outputs
         shell: bash
@@ -62,6 +63,7 @@ jobs:
           assert report["status"] == "passed"
           assert report["reference"]["model"] == "fixture-reference-v1"
           assert report["candidates"][0]["model"] == "fixture-candidate-v2"
+          assert report["policy"]["schema_version"] == "mendpact.policy.v2"
           PY
       - name: Offline semantic calibration Action smoke test
         id: mendpact-semantic-calibration
@@ -69,6 +71,7 @@ jobs:
         with:
           mode: calibrate-grader
           semantic-labels: examples/calibration/semantic-labels.example.json
+          policy: examples/policies/local-reliability.toml
           output: semantic-calibration-report.json
       - name: Verify semantic calibration Action outputs
         shell: bash
@@ -89,6 +92,7 @@ jobs:
           assert report["status"] == "passed"
           assert report["selected_threshold"] == 0.82
           assert report["validation"]["false_accepts"] == 0
+          assert report["source_policy"]["schema_version"] == "mendpact.policy.v2"
           PY
       - name: Start MCP fixture
         run: |

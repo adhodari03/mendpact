@@ -59,6 +59,11 @@ digest of the complete labelled dataset.
 Exit code `0` means the saved scores meet every configured requirement, `1` means the calibration
 report was produced but failed policy, and `2` means the input or command was invalid.
 
+Use `--policy mendpact.toml` to load these gates from the `[semantic_calibration]` section of a
+`mendpact.policy.v2` file. The calibration report retains the resolved source policy and its
+SHA-256. Policy v1 is rejected because it has no semantic-calibration contract, and individual
+threshold options cannot be combined with policy.
+
 ## Trust boundary
 
 This command does not generate semantic scores or claim that a grader is universally correct. It
