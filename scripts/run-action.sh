@@ -8,7 +8,8 @@ policy="${MENDPACT_POLICY:-}"
 auth_token_env="${MENDPACT_AUTH_TOKEN_ENV:-}"
 allow_private="${MENDPACT_ALLOW_PRIVATE:-false}"
 allow_insecure_http="${MENDPACT_ALLOW_INSECURE_HTTP:-false}"
-allow_new_confusions="${MENDPACT_ALLOW_NEW_CONFUSIONS:-false}"
+allow_new_confusions_input="${MENDPACT_ALLOW_NEW_CONFUSIONS:-}"
+allow_new_confusions="${allow_new_confusions_input:-false}"
 
 if [[ -z "${output}" ]]; then
   echo "MendPact Action: output cannot be empty." >&2
@@ -122,18 +123,32 @@ case "${mode}" in
       echo "MendPact Action: reference-report and candidate-report are required in compare-models mode." >&2
       exit 2
     fi
-    if [[ -n "${target}" || -n "${policy}" || -n "${auth_token_env}" || \
+    if [[ -n "${target}" || -n "${auth_token_env}" || \
        "${allow_private}" == "true" || "${allow_insecure_http}" == "true" ]]; then
-      echo "MendPact Action: compare-models mode does not accept target, policy, authentication, or target allowance inputs." >&2
+      echo "MendPact Action: compare-models mode does not accept target, authentication, or target allowance inputs." >&2
       exit 2
     fi
     command_args=(
       mendpact compare-models "${reference_report}" "${candidate_report}"
-      --max-overall-pass-rate-drop "${MENDPACT_MAX_OVERALL_PASS_RATE_DROP:-0}"
-      --max-scenario-pass-rate-drop "${MENDPACT_MAX_SCENARIO_PASS_RATE_DROP:-0}"
-      --output "${output}"
     )
-    append_boolean_flag "${allow_new_confusions}" --allow-new-confusions
+    if [[ -n "${policy}" ]]; then
+      if [[ -n "${MENDPACT_MAX_OVERALL_PASS_RATE_DROP:-}" || \
+         -n "${MENDPACT_MAX_SCENARIO_PASS_RATE_DROP:-}" || \
+         -n "${allow_new_confusions_input}" ]]; then
+        echo "MendPact Action: policy cannot be combined with model-comparison threshold inputs." >&2
+        exit 2
+      fi
+      command_args+=(--policy "${policy}")
+    else
+      command_args+=(
+        --max-overall-pass-rate-drop "${MENDPACT_MAX_OVERALL_PASS_RATE_DROP:-0}"
+        --max-scenario-pass-rate-drop "${MENDPACT_MAX_SCENARIO_PASS_RATE_DROP:-0}"
+      )
+    fi
+    command_args+=(--output "${output}")
+    if [[ -z "${policy}" ]]; then
+      append_boolean_flag "${allow_new_confusions}" --allow-new-confusions
+    fi
     ;;
   calibrate-grader)
     semantic_labels="${MENDPACT_SEMANTIC_LABELS:-}"
@@ -141,19 +156,32 @@ case "${mode}" in
       echo "MendPact Action: semantic-labels is required in calibrate-grader mode." >&2
       exit 2
     fi
-    if [[ -n "${target}" || -n "${policy}" || -n "${auth_token_env}" || \
+    if [[ -n "${target}" || -n "${auth_token_env}" || \
        "${allow_private}" == "true" || "${allow_insecure_http}" == "true" ]]; then
-      echo "MendPact Action: calibrate-grader mode does not accept target, policy, authentication, or target allowance inputs." >&2
+      echo "MendPact Action: calibrate-grader mode does not accept target, authentication, or target allowance inputs." >&2
       exit 2
     fi
     command_args=(
       mendpact calibrate-grader "${semantic_labels}"
-      --min-calibration-examples "${MENDPACT_MIN_CALIBRATION_EXAMPLES:-4}"
-      --min-validation-examples "${MENDPACT_MIN_VALIDATION_EXAMPLES:-4}"
-      --min-validation-balanced-accuracy "${MENDPACT_MIN_VALIDATION_BALANCED_ACCURACY:-0.8}"
-      --max-validation-false-accept-rate "${MENDPACT_MAX_VALIDATION_FALSE_ACCEPT_RATE:-0.1}"
-      --output "${output}"
     )
+    if [[ -n "${policy}" ]]; then
+      if [[ -n "${MENDPACT_MIN_CALIBRATION_EXAMPLES:-}" || \
+         -n "${MENDPACT_MIN_VALIDATION_EXAMPLES:-}" || \
+         -n "${MENDPACT_MIN_VALIDATION_BALANCED_ACCURACY:-}" || \
+         -n "${MENDPACT_MAX_VALIDATION_FALSE_ACCEPT_RATE:-}" ]]; then
+        echo "MendPact Action: policy cannot be combined with semantic-calibration threshold inputs." >&2
+        exit 2
+      fi
+      command_args+=(--policy "${policy}")
+    else
+      command_args+=(
+        --min-calibration-examples "${MENDPACT_MIN_CALIBRATION_EXAMPLES:-4}"
+        --min-validation-examples "${MENDPACT_MIN_VALIDATION_EXAMPLES:-4}"
+        --min-validation-balanced-accuracy "${MENDPACT_MIN_VALIDATION_BALANCED_ACCURACY:-0.8}"
+        --max-validation-false-accept-rate "${MENDPACT_MAX_VALIDATION_FALSE_ACCEPT_RATE:-0.1}"
+      )
+    fi
+    command_args+=(--output "${output}")
     ;;
   *)
     echo "MendPact Action: mode must be 'auth', 'scan', 'guard', 'compare-models', or 'calibrate-grader'." >&2

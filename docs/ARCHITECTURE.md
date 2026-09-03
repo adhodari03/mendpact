@@ -98,7 +98,10 @@ revision, and exposes generated artifact paths to the consuming workflow. Scan r
 default mode so existing Action configurations continue to work. Authorization mode calls the
 same credential-free audit as the CLI and rejects token configuration before constructing the
 command. Model-comparison mode maps two local report paths and deterministic thresholds to the
-same offline CLI engine, without requiring a target or accepting credentials.
+same offline CLI engine, without requiring a target or accepting credentials. Policy v2 extends
+the reviewed policy boundary to model-comparison and semantic-calibration gates while preserving
+v1 behavior for scan, authorization, and guard consumers. Every derived report retains the
+resolved policy and source digest.
 
 Authorization preflight is a separate read-only vertical slice:
 

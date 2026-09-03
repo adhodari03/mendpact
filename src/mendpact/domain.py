@@ -246,7 +246,9 @@ class ContractImpact(StrEnum):
 class PolicySnapshot(BaseModel):
     """Resolved policy evidence embedded in scan and guard reports."""
 
-    schema_version: Literal["mendpact.policy.v1"] = "mendpact.policy.v1"
+    schema_version: Literal["mendpact.policy.v1", "mendpact.policy.v2"] = (
+        "mendpact.policy.v1"
+    )
     source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     name: str
     profile: PolicyProfile
@@ -256,6 +258,8 @@ class PolicySnapshot(BaseModel):
     allow_insecure_http: bool = False
     bearer_token_env: str | None = None
     waivers: list[PolicyWaiver] = Field(default_factory=list)
+    model_comparison: ModelComparisonThresholds | None = None
+    semantic_calibration: SemanticCalibrationPolicy | None = None
 
 
 class ContractChangeKind(StrEnum):
@@ -661,6 +665,7 @@ class ModelComparisonReport(BaseModel):
     target: str
     suite_name: str
     status: ScanStatus
+    policy: PolicySnapshot | None = None
     thresholds: ModelComparisonThresholds
     reference: ModelRunSnapshot
     candidates: list[ModelRunSnapshot] = Field(min_length=1)
@@ -778,6 +783,7 @@ class SemanticCalibrationReport(BaseModel):
     grader: str
     grader_version: str
     selected_threshold: float = Field(ge=0.0, le=1.0)
+    source_policy: PolicySnapshot | None = None
     policy: SemanticCalibrationPolicy
     calibration: SemanticCalibrationMetrics
     validation: SemanticCalibrationMetrics

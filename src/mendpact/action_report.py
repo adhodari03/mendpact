@@ -739,8 +739,12 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
     ]
     annotations: list[Annotation] = []
 
-    policy = payload.get("policy")
-    if isinstance(policy, dict) and policy.get("schema_version") == "mendpact.policy.v1":
+    source_policy = payload.get("source_policy")
+    policy = source_policy if isinstance(source_policy, dict) else payload.get("policy")
+    if isinstance(policy, dict) and policy.get("schema_version") in {
+        "mendpact.policy.v1",
+        "mendpact.policy.v2",
+    }:
         waivers = [item for item in policy.get("waivers", []) if isinstance(item, dict)]
         active_waivers = sum(item.get("status") == "active" for item in waivers)
         expired_waivers = sum(item.get("status") == "expired" for item in waivers)
@@ -751,6 +755,7 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
                 *_table(
                     [
                         "Name",
+                        "Schema",
                         "Profile",
                         "Scan fails on",
                         "Contract fails on",
@@ -762,6 +767,7 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
                     [
                         [
                             policy.get("name"),
+                            policy.get("schema_version"),
                             policy.get("profile"),
                             policy.get("scan_fail_on"),
                             policy.get("contract_fail_on"),

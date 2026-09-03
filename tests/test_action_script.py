@@ -149,6 +149,47 @@ def test_action_script_validates_model_comparison_inputs(tmp_path: Path) -> None
     assert "does not accept target" in target_input.stderr
 
 
+def test_action_script_lets_v2_policy_own_model_comparison_gates(tmp_path: Path) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="compare-models",
+        MENDPACT_REFERENCE_REPORT="reference.json",
+        MENDPACT_CANDIDATE_REPORT="candidate.json",
+        MENDPACT_POLICY="mendpact-v2.toml",
+        MENDPACT_OUTPUT="comparison.json",
+    )
+    override = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="compare-models",
+        MENDPACT_REFERENCE_REPORT="reference.json",
+        MENDPACT_CANDIDATE_REPORT="candidate.json",
+        MENDPACT_POLICY="mendpact-v2.toml",
+        MENDPACT_MAX_SCENARIO_PASS_RATE_DROP="0.1",
+    )
+    boolean_override = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="compare-models",
+        MENDPACT_REFERENCE_REPORT="reference.json",
+        MENDPACT_CANDIDATE_REPORT="candidate.json",
+        MENDPACT_POLICY="mendpact-v2.toml",
+        MENDPACT_ALLOW_NEW_CONFUSIONS="false",
+    )
+
+    assert result.returncode == 0
+    assert _arguments(tmp_path) == [
+        "compare-models",
+        "reference.json",
+        "candidate.json",
+        "--policy",
+        "mendpact-v2.toml",
+        "--output",
+        "comparison.json",
+    ]
+    assert override.returncode == 2
+    assert "cannot be combined with model-comparison threshold inputs" in override.stderr
+    assert boolean_override.returncode == 2
+
+
 def test_action_script_still_requires_target_for_network_modes(tmp_path: Path) -> None:
     for mode in ("auth", "scan", "guard"):
         result = _run_action_script(tmp_path, MENDPACT_MODE=mode)
@@ -202,6 +243,37 @@ def test_action_script_validates_semantic_calibration_inputs(tmp_path: Path) -> 
     assert "semantic-labels is required" in missing_labels.stderr
     assert target_input.returncode == 2
     assert "does not accept target" in target_input.stderr
+
+
+def test_action_script_lets_v2_policy_own_semantic_calibration_gates(
+    tmp_path: Path,
+) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="calibrate-grader",
+        MENDPACT_SEMANTIC_LABELS="labels.json",
+        MENDPACT_POLICY="mendpact-v2.toml",
+        MENDPACT_OUTPUT="calibration.json",
+    )
+    override = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="calibrate-grader",
+        MENDPACT_SEMANTIC_LABELS="labels.json",
+        MENDPACT_POLICY="mendpact-v2.toml",
+        MENDPACT_MIN_VALIDATION_EXAMPLES="30",
+    )
+
+    assert result.returncode == 0
+    assert _arguments(tmp_path) == [
+        "calibrate-grader",
+        "labels.json",
+        "--policy",
+        "mendpact-v2.toml",
+        "--output",
+        "calibration.json",
+    ]
+    assert override.returncode == 2
+    assert "cannot be combined with semantic-calibration threshold inputs" in override.stderr
 
 
 def test_action_script_rejects_incomplete_guard_configuration(tmp_path: Path) -> None:

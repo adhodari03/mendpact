@@ -45,7 +45,13 @@ from mendpact.drivers.openai import (
 from mendpact.drivers.replay import ReplayDriver
 from mendpact.guard import guard_mcp_url
 from mendpact.model_comparison import compare_behavior_reports, load_behavior_report
-from mendpact.policy import PolicyConfigurationError, load_policy, target_policy
+from mendpact.policy import (
+    PolicyConfigurationError,
+    load_policy,
+    model_comparison_policy,
+    semantic_calibration_policy,
+    target_policy,
+)
 from mendpact.project_init import ProjectInitializationError, initialize_project
 from mendpact.regression import (
     baseline_from_report,
@@ -921,6 +927,7 @@ def evaluate(
 
 @app.command("compare-models")
 def compare_models(
+    ctx: typer.Context,
     reference: Annotated[
         Path,
         typer.Argument(
@@ -961,6 +968,16 @@ def compare_models(
             help="Report newly confused tool pairs as warnings instead of failures",
         ),
     ] = False,
+    policy_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--policy",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Versioned v2 policy that owns model-comparison thresholds",
+        ),
+    ] = None,
     output: Annotated[
         Path | None,
         typer.Option("--output", "-o", help="Write the model comparison JSON report"),
@@ -969,19 +986,38 @@ def compare_models(
     """Compare complete behavior reports without making provider API calls."""
 
     try:
-        input_paths = {reference.resolve(), *(path.resolve() for path in candidates)}
+        input_paths = {
+            reference.resolve(),
+            *(path.resolve() for path in candidates),
+        }
+        if policy_file is not None:
+            input_paths.add(policy_file.resolve())
         if output is not None and output.resolve() in input_paths:
-            raise ValueError("--output cannot overwrite an input behavior report.")
-        report = compare_behavior_reports(
-            load_behavior_report(reference),
-            [load_behavior_report(path) for path in candidates],
-            ModelComparisonThresholds(
+            raise ValueError("--output cannot overwrite an input report or policy.")
+        applied_policy = load_policy(policy_file) if policy_file is not None else None
+        if applied_policy is not None:
+            _reject_policy_overrides(
+                ctx,
+                (
+                    "max_overall_pass_rate_drop",
+                    "max_scenario_pass_rate_drop",
+                    "allow_new_confusions",
+                ),
+            )
+            comparison_thresholds = model_comparison_policy(applied_policy)
+        else:
+            comparison_thresholds = ModelComparisonThresholds(
                 max_overall_pass_rate_drop=max_overall_pass_rate_drop,
                 max_scenario_pass_rate_drop=max_scenario_pass_rate_drop,
                 allow_new_confusions=allow_new_confusions,
-            ),
+            )
+        report = compare_behavior_reports(
+            load_behavior_report(reference),
+            [load_behavior_report(path) for path in candidates],
+            comparison_thresholds,
+            policy=applied_policy,
         )
-    except (OSError, ValueError) as exc:
+    except (OSError, PolicyConfigurationError, ValueError) as exc:
         console.print(f"[red]Could not compare model behavior:[/] {exc}")
         raise typer.Exit(code=2) from exc
 
@@ -1000,6 +1036,7 @@ def compare_models(
 
 @app.command("calibrate-grader")
 def calibrate_grader(
+    ctx: typer.Context,
     labels: Annotated[
         Path,
         typer.Argument(
@@ -1033,6 +1070,16 @@ def calibrate_grader(
             help="Maximum false-accept rate allowed on the validation split",
         ),
     ] = 0.1,
+    policy_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--policy",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Versioned v2 policy that owns semantic-calibration thresholds",
+        ),
+    ] = None,
     output: Annotated[
         Path | None,
         typer.Option("--output", "-o", help="Write the semantic calibration JSON report"),
@@ -1041,18 +1088,36 @@ def calibrate_grader(
     """Calibrate saved semantic scores and validate them against human labels."""
 
     try:
-        if output is not None and output.resolve() == labels.resolve():
-            raise ValueError("--output cannot overwrite the semantic label set.")
-        report = calibrate_semantic_grader(
-            load_semantic_label_set(labels),
-            SemanticCalibrationPolicy(
+        input_paths = {labels.resolve()}
+        if policy_file is not None:
+            input_paths.add(policy_file.resolve())
+        if output is not None and output.resolve() in input_paths:
+            raise ValueError("--output cannot overwrite the semantic labels or policy.")
+        applied_policy = load_policy(policy_file) if policy_file is not None else None
+        if applied_policy is not None:
+            _reject_policy_overrides(
+                ctx,
+                (
+                    "min_calibration_examples",
+                    "min_validation_examples",
+                    "min_validation_balanced_accuracy",
+                    "max_validation_false_accept_rate",
+                ),
+            )
+            calibration_thresholds = semantic_calibration_policy(applied_policy)
+        else:
+            calibration_thresholds = SemanticCalibrationPolicy(
                 min_calibration_examples=min_calibration_examples,
                 min_validation_examples=min_validation_examples,
                 min_validation_balanced_accuracy=min_validation_balanced_accuracy,
                 max_validation_false_accept_rate=max_validation_false_accept_rate,
-            ),
+            )
+        report = calibrate_semantic_grader(
+            load_semantic_label_set(labels),
+            calibration_thresholds,
+            source_policy=applied_policy,
         )
-    except (OSError, ValueError) as exc:
+    except (OSError, PolicyConfigurationError, ValueError) as exc:
         console.print(f"[red]Could not calibrate semantic grader:[/] {exc}")
         raise typer.Exit(code=2) from exc
 

@@ -100,6 +100,127 @@ def test_calibrate_grader_does_not_overwrite_labels() -> None:
     assert "semantic" in result.stdout
 
 
+def test_calibrate_grader_uses_v2_policy_and_records_its_identity(tmp_path: Path) -> None:
+    labels = (
+        Path(__file__).parents[1]
+        / "examples"
+        / "calibration"
+        / "semantic-labels.example.json"
+    )
+    policy = tmp_path / "mendpact.toml"
+    output = tmp_path / "calibration.json"
+    policy.write_text(
+        '\n'.join(
+            [
+                'schema_version = "mendpact.policy.v2"',
+                'name = "grader-review"',
+                'profile = "local"',
+                '',
+                '[semantic_calibration]',
+                'min_calibration_examples = 4',
+                'min_validation_examples = 4',
+                'min_validation_balanced_accuracy = 0.95',
+                'max_validation_false_accept_rate = 0.0',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "calibrate-grader",
+            str(labels),
+            "--policy",
+            str(policy),
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["source_policy"]["schema_version"] == "mendpact.policy.v2"
+    assert payload["source_policy"]["name"] == "grader-review"
+    assert payload["policy"]["min_validation_balanced_accuracy"] == 0.95
+    assert payload["policy"]["max_validation_false_accept_rate"] == 0.0
+
+
+def test_calibrate_grader_rejects_v1_or_explicit_policy_override(
+    tmp_path: Path,
+) -> None:
+    labels = (
+        Path(__file__).parents[1]
+        / "examples"
+        / "calibration"
+        / "semantic-labels.example.json"
+    )
+    policy = tmp_path / "mendpact.toml"
+    policy.write_text(
+        'schema_version = "mendpact.policy.v1"\nname = "legacy"\nprofile = "local"\n',
+        encoding="utf-8",
+    )
+
+    legacy = runner.invoke(
+        app,
+        ["calibrate-grader", str(labels), "--policy", str(policy)],
+    )
+    policy.write_text(
+        'schema_version = "mendpact.policy.v2"\nname = "current"\nprofile = "local"\n',
+        encoding="utf-8",
+    )
+    override = runner.invoke(
+        app,
+        [
+            "calibrate-grader",
+            str(labels),
+            "--policy",
+            str(policy),
+            "--min-validation-examples",
+            "6",
+        ],
+    )
+
+    assert legacy.exit_code == 2
+    assert "requires" in legacy.stdout
+    assert "mendpact.policy.v2" in legacy.stdout
+    assert override.exit_code == 2
+    assert "--policy cannot be combined" in override.stdout
+    assert "--min-validation-examples" in override.stdout
+
+
+def test_calibrate_grader_does_not_overwrite_policy(tmp_path: Path) -> None:
+    labels = (
+        Path(__file__).parents[1]
+        / "examples"
+        / "calibration"
+        / "semantic-labels.example.json"
+    )
+    policy = tmp_path / "mendpact.toml"
+    source = (
+        'schema_version = "mendpact.policy.v2"\n'
+        'name = "current"\n'
+        'profile = "local"\n'
+    )
+    policy.write_text(source, encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "calibrate-grader",
+            str(labels),
+            "--policy",
+            str(policy),
+            "--output",
+            str(policy),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "cannot overwrite" in result.stdout
+    assert policy.read_text(encoding="utf-8") == source
+
+
 def _write_contract_scan(
     path: Path,
     *,
@@ -220,9 +341,13 @@ def test_init_creates_production_safe_scaffold(tmp_path: Path) -> None:
     scenario = json.loads(
         (project / "mendpact/scenarios.example.json").read_text(encoding="utf-8")
     )
+    assert 'schema_version = "mendpact.policy.v2"' in policy
     assert 'profile = "production"' in policy
     assert "allow_private = false" in policy
     assert "allow_insecure_http = false" in policy
+    assert "[model_comparison]" in policy
+    assert "[semantic_calibration]" in policy
+    assert "max_validation_false_accept_rate = 0.02" in policy
     assert "adhodari03/mendpact@v0.3.0" in workflow
     assert 'target: "https://api.example.com/mcp"' in workflow
     assert "mode: scan" in workflow

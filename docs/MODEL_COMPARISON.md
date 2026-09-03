@@ -78,6 +78,13 @@ an API key, contacts an MCP endpoint or provider, or executes a selected tool. P
 incurred only when creating new live behavior reports with `mendpact evaluate --driver openai`.
 Saved reports or deterministic replays can be compared repeatedly at no provider cost.
 
+## Policy as code
+
+Use `--policy mendpact.toml` to load model-comparison gates from the `[model_comparison]` section of
+a `mendpact.policy.v2` file. The report retains the resolved policy and its source SHA-256. A v1
+policy is rejected because it has no model-comparison contract. Command-line threshold options
+cannot be combined with policy.
+
 ## GitHub Action
 
 The composite Action exposes the same offline policy for one reference and one candidate per step:
@@ -88,8 +95,7 @@ The composite Action exposes the same offline policy for one reference and one c
     mode: compare-models
     reference-report: mendpact/reference-behavior.json
     candidate-report: mendpact/candidate-behavior.json
-    max-overall-pass-rate-drop: "0.02"
-    max-scenario-pass-rate-drop: "0.05"
+    policy: mendpact.toml
     output: mendpact-model-comparison.json
 ```
 

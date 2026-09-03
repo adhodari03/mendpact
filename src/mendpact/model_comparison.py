@@ -18,6 +18,7 @@ from mendpact.domain import (
     ModelRunSnapshot,
     ModelScenarioDelta,
     ModelScenarioSnapshot,
+    PolicySnapshot,
     RegressionImpact,
     ScanStatus,
 )
@@ -319,6 +320,8 @@ def compare_behavior_reports(
     reference: BehaviorReport,
     candidates: list[BehaviorReport],
     thresholds: ModelComparisonThresholds | None = None,
+    *,
+    policy: PolicySnapshot | None = None,
 ) -> ModelComparisonReport:
     """Compare complete reports without contacting any model provider or MCP target."""
 
@@ -358,6 +361,7 @@ def compare_behavior_reports(
         target=reference.target,
         suite_name=reference.suite_name,
         status=ScanStatus.FAILED if failed else ScanStatus.PASSED,
+        policy=policy,
         thresholds=applied_thresholds,
         reference=reference_snapshot,
         candidates=candidate_snapshots,

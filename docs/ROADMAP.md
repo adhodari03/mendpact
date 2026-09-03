@@ -57,6 +57,7 @@
 - [x] semantic-score threshold calibration against human labels
 - [x] offline compatibility comparison between model runs
 - [x] offline model comparison mode for the composite GitHub Action
+- [x] policy v2 gates for model comparison and semantic calibration
 
 ## Milestone 0.7 — hosted beta
 

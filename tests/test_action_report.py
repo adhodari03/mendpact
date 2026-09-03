@@ -370,3 +370,18 @@ def test_renders_semantic_calibration_metrics_and_disagreements() -> None:
     assert rendered.annotations[0].level == "error"
     assert rendered.annotations[1].level == "warning"
     assert "false-accept rate" in rendered.annotations[1].message
+
+    payload["source_policy"] = {
+        "schema_version": "mendpact.policy.v2",
+        "name": "reviewed-reliability",
+        "profile": "production",
+        "scan_fail_on": "high",
+        "contract_fail_on": "risky",
+        "allow_private": False,
+        "allow_insecure_http": False,
+        "waivers": [],
+    }
+    with_policy = render_action_report(payload, "semantic-calibration.json")
+    assert "### Applied policy" in with_policy.summary
+    assert "reviewed-reliability" in with_policy.summary
+    assert "mendpact.policy.v2" in with_policy.summary
