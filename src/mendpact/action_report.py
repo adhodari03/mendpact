@@ -421,11 +421,149 @@ def _authorization_sections(
     return lines, annotations
 
 
+def _model_comparison_sections(
+    payload: dict[str, Any],
+) -> tuple[list[str], list[Annotation]]:
+    reference = payload.get("reference") or {}
+    thresholds = payload.get("thresholds") or {}
+    candidates = [
+        item for item in payload.get("candidates", []) if isinstance(item, dict)
+    ]
+    comparisons = [
+        item for item in payload.get("comparisons", []) if isinstance(item, dict)
+    ]
+    comparison_by_run_id = {
+        str(item.get("candidate_run_id")): item for item in comparisons
+    }
+    model_rows: list[list[object]] = [
+        [
+            "Reference",
+            f"{reference.get('driver', '—')} / {reference.get('model', '—')}",
+            "—",
+            f"{float(reference.get('pass_rate', 0)):.1%}",
+            "—",
+            reference.get("total_tokens", 0),
+            (
+                f"{float(reference['average_latency_ms']):.0f} ms"
+                if reference.get("average_latency_ms") is not None
+                else "—"
+            ),
+        ]
+    ]
+    for candidate in candidates:
+        comparison = comparison_by_run_id.get(str(candidate.get("run_id")), {})
+        model_rows.append(
+            [
+                "Candidate",
+                f"{candidate.get('driver', '—')} / {candidate.get('model', '—')}",
+                _status(comparison.get("status")),
+                f"{float(candidate.get('pass_rate', 0)):.1%}",
+                f"{float(comparison.get('pass_rate_delta', 0)):+.1%}",
+                candidate.get("total_tokens", 0),
+                (
+                    f"{float(candidate['average_latency_ms']):.0f} ms"
+                    if candidate.get("average_latency_ms") is not None
+                    else "—"
+                ),
+            ]
+        )
+    lines = [
+        "### Comparison policy",
+        "",
+        *_table(
+            ["Overall drop", "Scenario drop", "New confusions"],
+            [
+                [
+                    f"{float(thresholds.get('max_overall_pass_rate_drop', 0)):.1%}",
+                    f"{float(thresholds.get('max_scenario_pass_rate_drop', 0)):.1%}",
+                    "Warnings" if thresholds.get("allow_new_confusions") else "Failures",
+                ]
+            ],
+        ),
+        "",
+        "### Model runs",
+        "",
+        *_table(
+            [
+                "Role",
+                "Driver / model",
+                "Status",
+                "Pass rate",
+                "Delta",
+                "Tokens",
+                "Avg latency",
+            ],
+            model_rows,
+        ),
+    ]
+
+    findings: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for comparison in comparisons:
+        for finding in comparison.get("findings", []):
+            if isinstance(finding, dict):
+                findings.append((comparison, finding))
+    if not findings:
+        return lines, []
+
+    shown = findings[:MAX_TABLE_ROWS]
+    omitted = len(findings) - len(shown)
+    lines.extend(
+        [
+            "",
+            "### Compatibility findings",
+            "",
+            *_table(
+                ["Impact", "Rule", "Candidate run", "Scenario", "Finding"],
+                [
+                    [
+                        str(finding.get("impact", "unknown")).upper(),
+                        finding.get("rule_id"),
+                        comparison.get("candidate_run_id"),
+                        finding.get("scenario_id"),
+                        finding.get("message"),
+                    ]
+                    for comparison, finding in shown
+                ],
+            ),
+        ]
+    )
+    if omitted:
+        lines.extend(
+            ["", f"_{omitted} additional findings are available in the JSON report._"]
+        )
+
+    annotations = [
+        Annotation(
+            level="warning",
+            title=(
+                f"MendPact {finding.get('rule_id', 'finding')} "
+                f"({str(finding.get('impact', 'unknown')).upper()})"
+            ),
+            message=" — ".join(
+                part
+                for part in (
+                    f"candidate run {comparison.get('candidate_run_id', 'unknown')}",
+                    (
+                        f"scenario {finding.get('scenario_id')}"
+                        if finding.get("scenario_id")
+                        else ""
+                    ),
+                    str(finding.get("message") or "Compatibility finding reported"),
+                )
+                if part
+            ),
+        )
+        for comparison, finding in findings
+    ]
+    return lines, annotations
+
+
 def render_action_report(payload: dict[str, Any], report_path: str) -> ActionReport:
     schema = payload.get("schema_version")
     mode = {
         "mendpact.authorization.v1": "Authorization",
         "mendpact.guard.v1": "Guard",
+        "mendpact.model-comparison.v1": "Model Comparison",
         "mendpact.scan.v1": "Scan",
     }.get(str(schema), "Report")
     lines = [
@@ -518,6 +656,9 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
         lines.extend(section_lines)
     elif schema == "mendpact.scan.v1":
         section_lines, annotations = _scan_sections(payload)
+        lines.extend(section_lines)
+    elif schema == "mendpact.model-comparison.v1":
+        section_lines, annotations = _model_comparison_sections(payload)
         lines.extend(section_lines)
     else:
         lines.extend(

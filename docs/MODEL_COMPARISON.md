@@ -77,3 +77,21 @@ The comparison command parses local JSON and performs deterministic calculations
 an API key, contacts an MCP endpoint or provider, or executes a selected tool. Provider cost is
 incurred only when creating new live behavior reports with `mendpact evaluate --driver openai`.
 Saved reports or deterministic replays can be compared repeatedly at no provider cost.
+
+## GitHub Action
+
+The composite Action exposes the same offline policy for one reference and one candidate per step:
+
+```yaml
+- uses: adhodari03/mendpact@v0.3.0
+  with:
+    mode: compare-models
+    reference-report: mendpact/reference-behavior.json
+    candidate-report: mendpact/candidate-behavior.json
+    max-overall-pass-rate-drop: "0.02"
+    max-scenario-pass-rate-drop: "0.05"
+    output: mendpact-model-comparison.json
+```
+
+The Action publishes a model matrix and compatibility findings in the GitHub job summary. Use a
+separate step per candidate when comparing several candidate artifacts in one workflow.

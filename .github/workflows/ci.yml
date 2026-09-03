@@ -35,6 +35,34 @@ jobs:
           examples/contracts/candidate-scan.json
           --scenario examples/scenarios/read-status.json
           --output contract-diff-report.json
+      - name: Offline model comparison Action smoke test
+        id: mendpact-model-comparison
+        uses: ./
+        with:
+          mode: compare-models
+          reference-report: examples/model-comparison/reference-behavior.json
+          candidate-report: examples/model-comparison/candidate-behavior.json
+          output: model-comparison-report.json
+      - name: Verify model comparison Action outputs
+        shell: bash
+        env:
+          MENDPACT_REPORT: ${{ steps.mendpact-model-comparison.outputs.report }}
+          MENDPACT_MODE: ${{ steps.mendpact-model-comparison.outputs.mode }}
+        run: |
+          test "${MENDPACT_REPORT}" = "model-comparison-report.json"
+          test "${MENDPACT_MODE}" = "compare-models"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(
+              Path("model-comparison-report.json").read_text(encoding="utf-8")
+          )
+          assert report["schema_version"] == "mendpact.model-comparison.v1"
+          assert report["status"] == "passed"
+          assert report["reference"]["model"] == "fixture-reference-v1"
+          assert report["candidates"][0]["model"] == "fixture-candidate-v2"
+          PY
       - name: Start MCP fixture
         run: |
           python -m uvicorn examples.fixture_server:app \
@@ -193,6 +221,13 @@ jobs:
         with:
           name: mendpact-contract-diff-report
           path: contract-diff-report.json
+          if-no-files-found: ignore
+      - name: Upload model comparison report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-model-comparison-report
+          path: model-comparison-report.json
           if-no-files-found: ignore
       - name: Upload guard report
         if: always()

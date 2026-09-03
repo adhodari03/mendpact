@@ -8,11 +8,8 @@ policy="${MENDPACT_POLICY:-}"
 auth_token_env="${MENDPACT_AUTH_TOKEN_ENV:-}"
 allow_private="${MENDPACT_ALLOW_PRIVATE:-false}"
 allow_insecure_http="${MENDPACT_ALLOW_INSECURE_HTTP:-false}"
+allow_new_confusions="${MENDPACT_ALLOW_NEW_CONFUSIONS:-false}"
 
-if [[ -z "${target}" ]]; then
-  echo "MendPact Action: target is required." >&2
-  exit 2
-fi
 if [[ -z "${output}" ]]; then
   echo "MendPact Action: output cannot be empty." >&2
   exit 2
@@ -40,6 +37,7 @@ append_boolean_flag() {
 
 validate_boolean "${allow_private}" --allow-private
 validate_boolean "${allow_insecure_http}" --allow-insecure-http
+validate_boolean "${allow_new_confusions}" --allow-new-confusions
 if [[ -n "${policy}" ]] && \
    [[ "${allow_private}" == "true" || "${allow_insecure_http}" == "true" ]]; then
   echo "MendPact Action: policy cannot be combined with target allowance inputs." >&2
@@ -56,6 +54,10 @@ fi
 
 case "${mode}" in
   auth)
+    if [[ -z "${target}" ]]; then
+      echo "MendPact Action: target is required in auth mode." >&2
+      exit 2
+    fi
     command_args=(
       mendpact auth-check "${target}"
     )
@@ -65,6 +67,10 @@ case "${mode}" in
     command_args+=(--output "${output}")
     ;;
   scan)
+    if [[ -z "${target}" ]]; then
+      echo "MendPact Action: target is required in scan mode." >&2
+      exit 2
+    fi
     command_args=(
       mendpact scan "${target}"
     )
@@ -77,6 +83,10 @@ case "${mode}" in
     baseline="${MENDPACT_BASELINE:-}"
     scenario="${MENDPACT_SCENARIO:-}"
     replay="${MENDPACT_REPLAY:-}"
+    if [[ -z "${target}" ]]; then
+      echo "MendPact Action: target is required in guard mode." >&2
+      exit 2
+    fi
     if [[ -z "${baseline}" ]]; then
       echo "MendPact Action: baseline is required in guard mode." >&2
       exit 2
@@ -105,20 +115,42 @@ case "${mode}" in
       command_args+=(--save-scan "${MENDPACT_SAVE_SCAN}")
     fi
     ;;
+  compare-models)
+    reference_report="${MENDPACT_REFERENCE_REPORT:-}"
+    candidate_report="${MENDPACT_CANDIDATE_REPORT:-}"
+    if [[ -z "${reference_report}" || -z "${candidate_report}" ]]; then
+      echo "MendPact Action: reference-report and candidate-report are required in compare-models mode." >&2
+      exit 2
+    fi
+    if [[ -n "${target}" || -n "${policy}" || -n "${auth_token_env}" || \
+       "${allow_private}" == "true" || "${allow_insecure_http}" == "true" ]]; then
+      echo "MendPact Action: compare-models mode does not accept target, policy, authentication, or target allowance inputs." >&2
+      exit 2
+    fi
+    command_args=(
+      mendpact compare-models "${reference_report}" "${candidate_report}"
+      --max-overall-pass-rate-drop "${MENDPACT_MAX_OVERALL_PASS_RATE_DROP:-0}"
+      --max-scenario-pass-rate-drop "${MENDPACT_MAX_SCENARIO_PASS_RATE_DROP:-0}"
+      --output "${output}"
+    )
+    append_boolean_flag "${allow_new_confusions}" --allow-new-confusions
+    ;;
   *)
-    echo "MendPact Action: mode must be 'auth', 'scan', or 'guard'." >&2
+    echo "MendPact Action: mode must be 'auth', 'scan', 'guard', or 'compare-models'." >&2
     exit 2
     ;;
 esac
 
-if [[ -n "${policy}" ]]; then
-  command_args+=(--policy "${policy}")
-else
-  if [[ -n "${auth_token_env}" ]]; then
-    command_args+=(--auth-token-env "${auth_token_env}")
+if [[ "${mode}" != "compare-models" ]]; then
+  if [[ -n "${policy}" ]]; then
+    command_args+=(--policy "${policy}")
+  else
+    if [[ -n "${auth_token_env}" ]]; then
+      command_args+=(--auth-token-env "${auth_token_env}")
+    fi
+    append_boolean_flag "${allow_private}" --allow-private
+    append_boolean_flag "${allow_insecure_http}" --allow-insecure-http
   fi
-  append_boolean_flag "${allow_private}" --allow-private
-  append_boolean_flag "${allow_insecure_http}" --allow-insecure-http
 fi
 
 exec "${command_args[@]}"

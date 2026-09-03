@@ -3,17 +3,18 @@
 MendPact is packaged as a composite GitHub Action in the repository root. Existing scan users
 remain on `mode: scan` by default. Authorization preflights use `mode: auth` without a credential.
 Guard users select `mode: guard` and provide a committed scan baseline, plus an optional
-scenario/replay pair.
+scenario/replay pair. Model-release checks use `mode: compare-models` with two completed behavior
+reports and make no network request.
 
 The Action installs the MendPact version contained in the referenced Git revision. The first
 alpha reference was `v0.1.0`; PR-native feedback is introduced in `v0.2.0`. GitHub recommends
 pinning third-party actions to a full commit SHA when an immutable reference is required. Use
 `main` only for deliberate pre-release testing.
 
-Every authorization, scan, and guard run writes a Markdown result to the GitHub job summary and
-emits bounded workflow annotations for findings, contract changes, and report errors. These
-presentation steps do not change MendPact's configured pass/fail thresholds. The JSON report
-remains the complete, machine-readable source of truth.
+Every authorization, scan, guard, and model-comparison run writes a Markdown result to the GitHub
+job summary and emits bounded workflow annotations for findings, contract changes, compatibility
+regressions, and report errors. These presentation steps do not change MendPact's configured
+pass/fail thresholds. The JSON report remains the complete, machine-readable source of truth.
 
 The immutable `v0.1.0` tag predates PR-native summaries. Use `v0.2.0` or a later release for this
 feedback.
@@ -181,6 +182,57 @@ workflow to choose retention, permissions, and naming policy.
 `save-scan` is a candidate artifact, not an automatically trusted baseline. Download it, run
 `mendpact baseline inspect`, review its target, scan ID, status, capabilities, and digest, then use
 `mendpact baseline promote` in a separate change. See [contract baseline lifecycle](BASELINES.md).
+
+## Offline model comparison mode
+
+Use two reviewed `mendpact.behavior.v1` artifacts to block a model change that exceeds an allowed
+overall or per-scenario pass-rate drop:
+
+```yaml
+name: Model behavior compatibility
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  model-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - id: mendpact-model-comparison
+        uses: adhodari03/mendpact@v0.3.0
+        with:
+          mode: compare-models
+          reference-report: mendpact/reference-behavior.json
+          candidate-report: mendpact/candidate-behavior.json
+          max-overall-pass-rate-drop: "0.02"
+          max-scenario-pass-rate-drop: "0.05"
+          output: mendpact-model-comparison.json
+      - if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-model-comparison
+          path: mendpact-model-comparison.json
+          if-no-files-found: ignore
+          retention-days: 14
+```
+
+`target` is intentionally optional in Action metadata and remains required at runtime for auth,
+scan, and guard modes. Comparison mode instead requires `reference-report` and `candidate-report`.
+It rejects target, policy, authentication, and target-network allowance inputs because it only
+reads local JSON. New confusion pairs fail by default; set `allow-new-confusions: "true"` to keep
+them as warnings. Run separate Action steps when one reference must be compared with several
+candidates, or use the CLI's multi-candidate form.
+
+The Action summary includes the configured thresholds, both model snapshots, the signed pass-rate
+delta, token and latency observations, and bounded compatibility annotations. It returns the JSON
+path through the existing `report` output.
 
 Private and insecure HTTP targets remain blocked by default. `allow-private` and
 `allow-insecure-http` exist only for deliberate test environments, usually on a self-hosted

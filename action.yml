@@ -1,5 +1,5 @@
 name: MendPact MCP Reliability
-description: Audit OAuth, scan an MCP endpoint, or guard it against compatibility regressions.
+description: Audit, scan, guard, or compare AI model behavior for MCP integrations.
 author: MendPact
 branding:
   icon: shield
@@ -7,12 +7,13 @@ branding:
 
 inputs:
   mode:
-    description: Run `auth`, `scan`, or the unified `guard` workflow.
+    description: Run `auth`, `scan`, `guard`, or offline `compare-models` mode.
     required: false
     default: scan
   target:
-    description: Remote Streamable HTTP MCP endpoint.
-    required: true
+    description: Remote Streamable HTTP MCP endpoint required by auth, scan, and guard modes.
+    required: false
+    default: ""
   policy:
     description: Versioned TOML policy that owns thresholds and target allowances.
     required: false
@@ -65,10 +66,30 @@ inputs:
     description: Optional candidate scan path written by guard mode.
     required: false
     default: ""
+  reference-report:
+    description: Reference behavior report required by compare-models mode.
+    required: false
+    default: ""
+  candidate-report:
+    description: Candidate behavior report required by compare-models mode.
+    required: false
+    default: ""
+  max-overall-pass-rate-drop:
+    description: Maximum overall pass-rate drop allowed in compare-models mode.
+    required: false
+    default: "0"
+  max-scenario-pass-rate-drop:
+    description: Maximum per-scenario pass-rate drop allowed in compare-models mode.
+    required: false
+    default: "0"
+  allow-new-confusions:
+    description: Treat new wrong-tool confusion pairs as warnings in compare-models mode.
+    required: false
+    default: "false"
 
 outputs:
   report:
-    description: Path to the generated authorization, scan, or guard JSON report.
+    description: Path to the generated authorization, scan, guard, or model comparison report.
     value: ${{ steps.metadata.outputs.report }}
   candidate-scan:
     description: Candidate scan path when `save-scan` is configured.
@@ -122,6 +143,11 @@ runs:
         MENDPACT_ALLOW_INSECURE_HTTP: ${{ inputs.allow-insecure-http }}
         MENDPACT_OUTPUT: ${{ inputs.output }}
         MENDPACT_SAVE_SCAN: ${{ inputs.save-scan }}
+        MENDPACT_REFERENCE_REPORT: ${{ inputs.reference-report }}
+        MENDPACT_CANDIDATE_REPORT: ${{ inputs.candidate-report }}
+        MENDPACT_MAX_OVERALL_PASS_RATE_DROP: ${{ inputs.max-overall-pass-rate-drop }}
+        MENDPACT_MAX_SCENARIO_PASS_RATE_DROP: ${{ inputs.max-scenario-pass-rate-drop }}
+        MENDPACT_ALLOW_NEW_CONFUSIONS: ${{ inputs.allow-new-confusions }}
         MENDPACT_ACTION_PATH: ${{ github.action_path }}
       run: bash "${MENDPACT_ACTION_PATH}/scripts/run-action.sh"
 

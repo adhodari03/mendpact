@@ -56,6 +56,7 @@
 - [x] provider and model snapshots from complete behavior reports
 - semantic grading calibrated against human labels
 - [x] offline compatibility comparison between model runs
+- [x] offline model comparison mode for the composite GitHub Action
 
 ## Milestone 0.7 — hosted beta
 

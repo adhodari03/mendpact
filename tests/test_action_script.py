@@ -102,6 +102,61 @@ def test_action_script_builds_guard_command_without_losing_spaces(tmp_path: Path
     ]
 
 
+def test_action_script_builds_offline_model_comparison(tmp_path: Path) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="compare-models",
+        MENDPACT_REFERENCE_REPORT="reports/reference model.json",
+        MENDPACT_CANDIDATE_REPORT="reports/candidate model.json",
+        MENDPACT_MAX_OVERALL_PASS_RATE_DROP="0.02",
+        MENDPACT_MAX_SCENARIO_PASS_RATE_DROP="0.05",
+        MENDPACT_ALLOW_NEW_CONFUSIONS="true",
+        MENDPACT_OUTPUT="reports/model comparison.json",
+    )
+
+    assert result.returncode == 0
+    assert _arguments(tmp_path) == [
+        "compare-models",
+        "reports/reference model.json",
+        "reports/candidate model.json",
+        "--max-overall-pass-rate-drop",
+        "0.02",
+        "--max-scenario-pass-rate-drop",
+        "0.05",
+        "--output",
+        "reports/model comparison.json",
+        "--allow-new-confusions",
+    ]
+
+
+def test_action_script_validates_model_comparison_inputs(tmp_path: Path) -> None:
+    incomplete = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="compare-models",
+        MENDPACT_REFERENCE_REPORT="reference.json",
+    )
+    target_input = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="compare-models",
+        MENDPACT_REFERENCE_REPORT="reference.json",
+        MENDPACT_CANDIDATE_REPORT="candidate.json",
+        MENDPACT_TARGET="https://example.com/mcp",
+    )
+
+    assert incomplete.returncode == 2
+    assert "reference-report and candidate-report are required" in incomplete.stderr
+    assert target_input.returncode == 2
+    assert "does not accept target" in target_input.stderr
+
+
+def test_action_script_still_requires_target_for_network_modes(tmp_path: Path) -> None:
+    for mode in ("auth", "scan", "guard"):
+        result = _run_action_script(tmp_path, MENDPACT_MODE=mode)
+
+        assert result.returncode == 2
+        assert f"target is required in {mode} mode" in result.stderr
+
+
 def test_action_script_rejects_incomplete_guard_configuration(tmp_path: Path) -> None:
     result = _run_action_script(
         tmp_path,
@@ -129,7 +184,9 @@ def test_action_script_rejects_unknown_mode_and_boolean(tmp_path: Path) -> None:
     )
 
     assert unknown_mode.returncode == 2
-    assert "mode must be 'auth', 'scan', or 'guard'" in unknown_mode.stderr
+    assert "mode must be 'auth', 'scan', 'guard', or 'compare-models'" in (
+        unknown_mode.stderr
+    )
     assert invalid_boolean.returncode == 2
     assert "must be 'true' or 'false'" in invalid_boolean.stderr
 

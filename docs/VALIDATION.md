@@ -254,3 +254,19 @@ The CLI path was exercised through its test runner using complete `mendpact.beha
 It produced a `mendpact.model-comparison.v1` artifact and returned exit `1` for a deliberately
 regressed candidate while retaining all findings. No MCP connection, tool execution, model
 provider, API key, or paid request was used.
+
+## Model comparison GitHub Action validation
+
+Date: September 3, 2026
+
+The `compare-models` Action mode was checked with the complete 192-test project suite, Ruff, strict
+MyPy, Bash syntax validation, Action/workflow YAML parsing, and diff whitespace validation. Tests
+cover shell argument construction with spaces, required reference and candidate paths, rejection
+of target-dependent inputs, model-matrix job summaries, pass-rate deltas, findings, and bounded
+annotations.
+
+An offline shell smoke exercised `scripts/run-action.sh`, the real `mendpact compare-models` CLI,
+the committed reference and candidate behavior fixtures, JSON report generation, and
+`mendpact.action_report`. The resulting report passed and the rendered job summary identified both
+models. No MCP endpoint, model provider, API key, bearer token, tool execution, or paid request was
+used.

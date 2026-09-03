@@ -239,3 +239,64 @@ def test_renders_standalone_authorization_audit() -> None:
     assert "HIGH" in rendered.summary
     assert "profile" in rendered.summary
     assert rendered.annotations[0].level == "error"
+
+
+def test_renders_model_comparison_matrix_and_findings() -> None:
+    payload: dict[str, object] = {
+        "schema_version": "mendpact.model-comparison.v1",
+        "status": "failed",
+        "target": "https://api.example.com/mcp",
+        "thresholds": {
+            "max_overall_pass_rate_drop": 0.02,
+            "max_scenario_pass_rate_drop": 0.05,
+            "allow_new_confusions": False,
+        },
+        "reference": {
+            "run_id": "reference-run",
+            "driver": "openai",
+            "model": "reference-model",
+            "pass_rate": 1.0,
+            "total_tokens": 100,
+            "average_latency_ms": 25.0,
+        },
+        "candidates": [
+            {
+                "run_id": "candidate-run",
+                "driver": "openai",
+                "model": "candidate-model",
+                "pass_rate": 0.5,
+                "total_tokens": 80,
+                "average_latency_ms": 20.0,
+            }
+        ],
+        "comparisons": [
+            {
+                "candidate_run_id": "candidate-run",
+                "status": "failed",
+                "pass_rate_delta": -0.5,
+                "findings": [
+                    {
+                        "rule_id": "MP-MATRIX-002",
+                        "impact": "failure",
+                        "scenario_id": "read-status",
+                        "message": "Scenario pass rate dropped by 50.0%.",
+                    }
+                ],
+            }
+        ],
+        "errors": [],
+    }
+
+    rendered = render_action_report(payload, "model-comparison.json")
+
+    assert "## MendPact Model Comparison" in rendered.summary
+    assert "### Comparison policy" in rendered.summary
+    assert "### Model runs" in rendered.summary
+    assert "reference-model" in rendered.summary
+    assert "candidate-model" in rendered.summary
+    assert "-50.0%" in rendered.summary
+    assert "### Compatibility findings" in rendered.summary
+    assert "MP-MATRIX-002" in rendered.summary
+    assert rendered.annotations[0].level == "error"
+    assert rendered.annotations[1].level == "warning"
+    assert "read-status" in rendered.annotations[1].message

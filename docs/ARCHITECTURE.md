@@ -79,7 +79,8 @@ constructs quoted CLI arguments without shell evaluation, installs the reference
 revision, and exposes generated artifact paths to the consuming workflow. Scan remains the
 default mode so existing Action configurations continue to work. Authorization mode calls the
 same credential-free audit as the CLI and rejects token configuration before constructing the
-command.
+command. Model-comparison mode maps two local report paths and deterministic thresholds to the
+same offline CLI engine, without requiring a target or accepting credentials.
 
 Authorization preflight is a separate read-only vertical slice:
 
