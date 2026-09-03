@@ -26,11 +26,78 @@ def test_help_lists_main_commands() -> None:
     assert "conformance" in result.stdout
     assert "evaluate" in result.stdout
     assert "compare-models" in result.stdout
+    assert "calibrate-grader" in result.stdout
     assert "diff" in result.stdout
     assert "guard" in result.stdout
     assert "init" in result.stdout
     assert "auth-check" in result.stdout
     assert "baseline" in result.stdout
+
+
+def test_calibrate_grader_writes_passing_offline_report(tmp_path: Path) -> None:
+    labels = (
+        Path(__file__).parents[1]
+        / "examples"
+        / "calibration"
+        / "semantic-labels.example.json"
+    )
+    output = tmp_path / "calibration.json"
+
+    result = runner.invoke(
+        app,
+        ["calibrate-grader", str(labels), "--output", str(output)],
+    )
+
+    assert result.exit_code == 0
+    assert "MendPact semantic calibration: PASSED" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "mendpact.semantic-calibration.v1"
+    assert payload["selected_threshold"] == 0.82
+    assert payload["validation"]["false_accepts"] == 0
+
+
+def test_calibrate_grader_uses_ci_exit_code_for_policy_failure(tmp_path: Path) -> None:
+    labels = (
+        Path(__file__).parents[1]
+        / "examples"
+        / "calibration"
+        / "semantic-labels.example.json"
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "calibrate-grader",
+            str(labels),
+            "--min-validation-balanced-accuracy",
+            "1",
+            "--max-validation-false-accept-rate",
+            "0",
+            "--min-validation-examples",
+            "5",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "MP-CAL-002" in result.stdout
+
+
+def test_calibrate_grader_does_not_overwrite_labels() -> None:
+    labels = (
+        Path(__file__).parents[1]
+        / "examples"
+        / "calibration"
+        / "semantic-labels.example.json"
+    )
+
+    result = runner.invoke(
+        app,
+        ["calibrate-grader", str(labels), "--output", str(labels)],
+    )
+
+    assert result.exit_code == 2
+    assert "cannot overwrite" in result.stdout
+    assert "semantic" in result.stdout
 
 
 def _write_contract_scan(

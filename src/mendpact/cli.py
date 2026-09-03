@@ -25,6 +25,7 @@ from mendpact.behavior import (
     load_replay_plan,
     replay_plan_from_report,
 )
+from mendpact.calibration import calibrate_semantic_grader, load_semantic_label_set
 from mendpact.conformance import run_server_conformance
 from mendpact.contract_diff import diff_scan_reports, load_scan_report
 from mendpact.domain import (
@@ -33,6 +34,7 @@ from mendpact.domain import (
     ModelComparisonThresholds,
     PolicySnapshot,
     ScanStatus,
+    SemanticCalibrationPolicy,
     Severity,
 )
 from mendpact.drivers.base import ModelDriver
@@ -59,6 +61,7 @@ from mendpact.reporting import (
     render_guard_report,
     render_model_comparison_report,
     render_report,
+    render_semantic_calibration_report,
     write_authorization_report,
     write_behavior_baseline,
     write_behavior_report,
@@ -68,6 +71,7 @@ from mendpact.reporting import (
     write_json_report,
     write_model_comparison_report,
     write_replay_plan,
+    write_semantic_calibration_report,
 )
 from mendpact.scanner import scan_mcp_url
 from mendpact.security.auth import (
@@ -987,6 +991,77 @@ def compare_models(
             write_model_comparison_report(report, output)
         except OSError as exc:
             console.print(f"[red]Could not write model comparison report:[/] {exc}")
+            raise typer.Exit(code=2) from exc
+        console.print(f"JSON report: {output}")
+
+    if report.status == ScanStatus.FAILED:
+        raise typer.Exit(code=1)
+
+
+@app.command("calibrate-grader")
+def calibrate_grader(
+    labels: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Versioned human labels paired with saved semantic scores",
+        ),
+    ],
+    min_calibration_examples: Annotated[
+        int,
+        typer.Option(min=2, help="Minimum examples required in the calibration split"),
+    ] = 4,
+    min_validation_examples: Annotated[
+        int,
+        typer.Option(min=2, help="Minimum examples required in the validation split"),
+    ] = 4,
+    min_validation_balanced_accuracy: Annotated[
+        float,
+        typer.Option(
+            min=0.0,
+            max=1.0,
+            help="Minimum balanced accuracy required on the validation split",
+        ),
+    ] = 0.8,
+    max_validation_false_accept_rate: Annotated[
+        float,
+        typer.Option(
+            min=0.0,
+            max=1.0,
+            help="Maximum false-accept rate allowed on the validation split",
+        ),
+    ] = 0.1,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Write the semantic calibration JSON report"),
+    ] = None,
+) -> None:
+    """Calibrate saved semantic scores and validate them against human labels."""
+
+    try:
+        if output is not None and output.resolve() == labels.resolve():
+            raise ValueError("--output cannot overwrite the semantic label set.")
+        report = calibrate_semantic_grader(
+            load_semantic_label_set(labels),
+            SemanticCalibrationPolicy(
+                min_calibration_examples=min_calibration_examples,
+                min_validation_examples=min_validation_examples,
+                min_validation_balanced_accuracy=min_validation_balanced_accuracy,
+                max_validation_false_accept_rate=max_validation_false_accept_rate,
+            ),
+        )
+    except (OSError, ValueError) as exc:
+        console.print(f"[red]Could not calibrate semantic grader:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    render_semantic_calibration_report(report, console)
+    if output is not None:
+        try:
+            write_semantic_calibration_report(report, output)
+        except OSError as exc:
+            console.print(f"[red]Could not write semantic calibration report:[/] {exc}")
             raise typer.Exit(code=2) from exc
         console.print(f"JSON report: {output}")
 

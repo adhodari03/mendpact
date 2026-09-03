@@ -22,6 +22,7 @@ from mendpact.domain import (
     ReplayPlan,
     ScanReport,
     ScanStatus,
+    SemanticCalibrationReport,
 )
 
 
@@ -54,6 +55,13 @@ def write_guard_report(report: GuardReport, destination: Path) -> None:
 
 def write_model_comparison_report(
     report: ModelComparisonReport,
+    destination: Path,
+) -> None:
+    destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+
+def write_semantic_calibration_report(
+    report: SemanticCalibrationReport,
     destination: Path,
 ) -> None:
     destination.write_text(report.model_dump_json(indent=2), encoding="utf-8")
@@ -488,3 +496,85 @@ def render_model_comparison_report(
             finding.message,
         )
     console.print(findings_table)
+
+
+def render_semantic_calibration_report(
+    report: SemanticCalibrationReport,
+    console: Console,
+) -> None:
+    """Render calibration and independent validation metrics for a semantic grader."""
+
+    status_style = {
+        ScanStatus.PASSED: "bold green",
+        ScanStatus.FAILED: "bold red",
+        ScanStatus.ERROR: "bold red",
+    }[report.status]
+    console.print(
+        f"MendPact semantic calibration: [{status_style}]{report.status.value.upper()}[/]"
+    )
+    console.print(
+        f"Label set: {report.label_set_name} | "
+        f"Grader: {report.grader}/{report.grader_version}"
+    )
+    console.print(
+        f"Selected threshold: {report.selected_threshold:.3f} | "
+        f"Dataset SHA-256: {report.label_set_sha256}"
+    )
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Split")
+    table.add_column("Examples", justify="right")
+    table.add_column("Accuracy", justify="right")
+    table.add_column("Balanced", justify="right")
+    table.add_column("False accepts", justify="right")
+    table.add_column("False rejects", justify="right")
+    table.add_column("False-accept rate", justify="right")
+    for name, metrics in (
+        ("Calibration", report.calibration),
+        ("Validation", report.validation),
+    ):
+        table.add_row(
+            name,
+            str(metrics.example_count),
+            f"{metrics.accuracy:.1%}",
+            f"{metrics.balanced_accuracy:.1%}",
+            str(metrics.false_accepts),
+            str(metrics.false_rejects),
+            f"{metrics.false_accept_rate:.1%}",
+        )
+    console.print(table)
+
+    if report.findings:
+        findings = Table(show_header=True, header_style="bold")
+        findings.add_column("Impact", width=9)
+        findings.add_column("Rule", width=12)
+        findings.add_column("Finding", overflow="fold")
+        findings.add_column("Observed", justify="right")
+        findings.add_column("Required", justify="right")
+        for finding in report.findings:
+            style = "red" if finding.impact == RegressionImpact.FAILURE else "yellow"
+            findings.add_row(
+                f"[{style}]{finding.impact.value.upper()}[/]",
+                finding.rule_id,
+                finding.message,
+                str(finding.observed_value),
+                str(finding.required_value),
+            )
+        console.print(findings)
+
+    if report.disagreements:
+        disagreements = Table(show_header=True, header_style="bold")
+        disagreements.add_column("Example", overflow="fold")
+        disagreements.add_column("Split")
+        disagreements.add_column("Score", justify="right")
+        disagreements.add_column("Human")
+        disagreements.add_column("Predicted")
+        for item in report.disagreements:
+            disagreements.add_row(
+                item.example_id,
+                item.split.value,
+                f"{item.semantic_score:.3f}",
+                item.human_label.value,
+                item.predicted_label.value,
+            )
+        console.print(disagreements)

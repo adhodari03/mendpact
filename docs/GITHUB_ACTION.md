@@ -5,6 +5,7 @@ remain on `mode: scan` by default. Authorization preflights use `mode: auth` wit
 Guard users select `mode: guard` and provide a committed scan baseline, plus an optional
 scenario/replay pair. Model-release checks use `mode: compare-models` with two completed behavior
 reports and make no network request.
+Semantic-grader checks use `mode: calibrate-grader` with reviewed human labels and saved scores.
 
 The Action installs the MendPact version contained in the referenced Git revision. The first
 alpha reference was `v0.1.0`; PR-native feedback is introduced in `v0.2.0`. GitHub recommends
@@ -233,6 +234,52 @@ candidates, or use the CLI's multi-candidate form.
 The Action summary includes the configured thresholds, both model snapshots, the signed pass-rate
 delta, token and latency observations, and bounded compatibility annotations. It returns the JSON
 path through the existing `report` output.
+
+## Offline semantic calibration mode
+
+Calibrate one exact semantic-grader version and enforce its independent validation quality:
+
+```yaml
+name: Semantic grader calibration
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-calibration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - id: mendpact-calibration
+        uses: adhodari03/mendpact@v0.3.0
+        with:
+          mode: calibrate-grader
+          semantic-labels: mendpact/semantic-labels.json
+          min-calibration-examples: "20"
+          min-validation-examples: "20"
+          min-validation-balanced-accuracy: "0.90"
+          max-validation-false-accept-rate: "0.02"
+          output: mendpact-semantic-calibration.json
+      - if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-semantic-calibration
+          path: mendpact-semantic-calibration.json
+          if-no-files-found: ignore
+          retention-days: 14
+```
+
+Calibration mode requires `semantic-labels` and rejects target, policy, authentication, and
+target-network allowance inputs. It reads local JSON and does not contact the semantic grader,
+an MCP endpoint, or a model provider. The summary shows the selected threshold, quality policy,
+calibration and validation metrics, findings, and bounded human/grader disagreements. See
+[semantic grader calibration](SEMANTIC_CALIBRATION.md) for the input contract and limitations.
 
 Private and insecure HTTP targets remain blocked by default. `allow-private` and
 `allow-insecure-http` exist only for deliberate test environments, usually on a self-hosted

@@ -270,3 +270,24 @@ the committed reference and candidate behavior fixtures, JSON report generation,
 `mendpact.action_report`. The resulting report passed and the rendered job summary identified both
 models. No MCP endpoint, model provider, API key, bearer token, tool execution, or paid request was
 used.
+
+## Semantic-grader calibration validation
+
+Date: September 3, 2026
+
+The offline semantic-score calibration layer was checked with the complete 206-test project
+suite, Ruff, strict MyPy, Bash syntax validation, Action/workflow YAML parsing, and diff whitespace
+validation. Tests cover calibration-only threshold selection, validation-split isolation,
+safety-oriented tie breaking, confusion metrics, false-accept and balanced-accuracy policy,
+minimum split sizes, label diversity, duplicate IDs, formatting-independent dataset digests, CLI
+exit codes, output overwrite protection, Action argument construction, and job-summary rendering.
+
+A local CLI and Action-shell smoke used the committed eight-example fixture. Both paths selected
+threshold `0.820`, produced a passing `mendpact.semantic-calibration.v1` report, and measured the
+four-example validation split without a false accept. The Action renderer produced the expected
+semantic-calibration job summary.
+
+The fixture proves the mechanics and is deliberately labelled as an example, not as a production
+benchmark. MendPact consumed already-saved semantic scores; it did not generate those scores,
+contact a model provider or MCP endpoint, load a credential, execute a tool, or incur a paid
+operation.

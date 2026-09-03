@@ -157,6 +157,53 @@ def test_action_script_still_requires_target_for_network_modes(tmp_path: Path) -
         assert f"target is required in {mode} mode" in result.stderr
 
 
+def test_action_script_builds_offline_semantic_calibration(tmp_path: Path) -> None:
+    result = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="calibrate-grader",
+        MENDPACT_SEMANTIC_LABELS="labels/human review.json",
+        MENDPACT_MIN_CALIBRATION_EXAMPLES="20",
+        MENDPACT_MIN_VALIDATION_EXAMPLES="30",
+        MENDPACT_MIN_VALIDATION_BALANCED_ACCURACY="0.9",
+        MENDPACT_MAX_VALIDATION_FALSE_ACCEPT_RATE="0.02",
+        MENDPACT_OUTPUT="reports/calibration result.json",
+    )
+
+    assert result.returncode == 0
+    assert _arguments(tmp_path) == [
+        "calibrate-grader",
+        "labels/human review.json",
+        "--min-calibration-examples",
+        "20",
+        "--min-validation-examples",
+        "30",
+        "--min-validation-balanced-accuracy",
+        "0.9",
+        "--max-validation-false-accept-rate",
+        "0.02",
+        "--output",
+        "reports/calibration result.json",
+    ]
+
+
+def test_action_script_validates_semantic_calibration_inputs(tmp_path: Path) -> None:
+    missing_labels = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="calibrate-grader",
+    )
+    target_input = _run_action_script(
+        tmp_path,
+        MENDPACT_MODE="calibrate-grader",
+        MENDPACT_SEMANTIC_LABELS="labels.json",
+        MENDPACT_TARGET="https://example.com/mcp",
+    )
+
+    assert missing_labels.returncode == 2
+    assert "semantic-labels is required" in missing_labels.stderr
+    assert target_input.returncode == 2
+    assert "does not accept target" in target_input.stderr
+
+
 def test_action_script_rejects_incomplete_guard_configuration(tmp_path: Path) -> None:
     result = _run_action_script(
         tmp_path,
@@ -184,7 +231,10 @@ def test_action_script_rejects_unknown_mode_and_boolean(tmp_path: Path) -> None:
     )
 
     assert unknown_mode.returncode == 2
-    assert "mode must be 'auth', 'scan', 'guard', or 'compare-models'" in (
+    assert (
+        "mode must be 'auth', 'scan', 'guard', 'compare-models', or "
+        "'calibrate-grader'"
+    ) in (
         unknown_mode.stderr
     )
     assert invalid_boolean.returncode == 2

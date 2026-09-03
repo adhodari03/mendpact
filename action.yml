@@ -1,5 +1,5 @@
 name: MendPact MCP Reliability
-description: Audit, scan, guard, or compare AI model behavior for MCP integrations.
+description: Audit, scan, guard, compare models, or calibrate AI grading for MCP integrations.
 author: MendPact
 branding:
   icon: shield
@@ -7,7 +7,7 @@ branding:
 
 inputs:
   mode:
-    description: Run `auth`, `scan`, `guard`, or offline `compare-models` mode.
+    description: Run `auth`, `scan`, `guard`, `compare-models`, or `calibrate-grader` mode.
     required: false
     default: scan
   target:
@@ -86,10 +86,30 @@ inputs:
     description: Treat new wrong-tool confusion pairs as warnings in compare-models mode.
     required: false
     default: "false"
+  semantic-labels:
+    description: Human-labelled semantic-score dataset required by calibrate-grader mode.
+    required: false
+    default: ""
+  min-calibration-examples:
+    description: Minimum calibration-split examples required by calibrate-grader mode.
+    required: false
+    default: "4"
+  min-validation-examples:
+    description: Minimum validation-split examples required by calibrate-grader mode.
+    required: false
+    default: "4"
+  min-validation-balanced-accuracy:
+    description: Minimum validation balanced accuracy required by calibrate-grader mode.
+    required: false
+    default: "0.8"
+  max-validation-false-accept-rate:
+    description: Maximum validation false-accept rate allowed by calibrate-grader mode.
+    required: false
+    default: "0.1"
 
 outputs:
   report:
-    description: Path to the generated authorization, scan, guard, or model comparison report.
+    description: Path to the generated authorization, scan, guard, comparison, or calibration report.
     value: ${{ steps.metadata.outputs.report }}
   candidate-scan:
     description: Candidate scan path when `save-scan` is configured.
@@ -148,6 +168,11 @@ runs:
         MENDPACT_MAX_OVERALL_PASS_RATE_DROP: ${{ inputs.max-overall-pass-rate-drop }}
         MENDPACT_MAX_SCENARIO_PASS_RATE_DROP: ${{ inputs.max-scenario-pass-rate-drop }}
         MENDPACT_ALLOW_NEW_CONFUSIONS: ${{ inputs.allow-new-confusions }}
+        MENDPACT_SEMANTIC_LABELS: ${{ inputs.semantic-labels }}
+        MENDPACT_MIN_CALIBRATION_EXAMPLES: ${{ inputs.min-calibration-examples }}
+        MENDPACT_MIN_VALIDATION_EXAMPLES: ${{ inputs.min-validation-examples }}
+        MENDPACT_MIN_VALIDATION_BALANCED_ACCURACY: ${{ inputs.min-validation-balanced-accuracy }}
+        MENDPACT_MAX_VALIDATION_FALSE_ACCEPT_RATE: ${{ inputs.max-validation-false-accept-rate }}
         MENDPACT_ACTION_PATH: ${{ github.action_path }}
       run: bash "${MENDPACT_ACTION_PATH}/scripts/run-action.sh"
 
