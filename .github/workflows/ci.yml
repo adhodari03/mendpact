@@ -63,6 +63,33 @@ jobs:
           assert report["reference"]["model"] == "fixture-reference-v1"
           assert report["candidates"][0]["model"] == "fixture-candidate-v2"
           PY
+      - name: Offline semantic calibration Action smoke test
+        id: mendpact-semantic-calibration
+        uses: ./
+        with:
+          mode: calibrate-grader
+          semantic-labels: examples/calibration/semantic-labels.example.json
+          output: semantic-calibration-report.json
+      - name: Verify semantic calibration Action outputs
+        shell: bash
+        env:
+          MENDPACT_REPORT: ${{ steps.mendpact-semantic-calibration.outputs.report }}
+          MENDPACT_MODE: ${{ steps.mendpact-semantic-calibration.outputs.mode }}
+        run: |
+          test "${MENDPACT_REPORT}" = "semantic-calibration-report.json"
+          test "${MENDPACT_MODE}" = "calibrate-grader"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(
+              Path("semantic-calibration-report.json").read_text(encoding="utf-8")
+          )
+          assert report["schema_version"] == "mendpact.semantic-calibration.v1"
+          assert report["status"] == "passed"
+          assert report["selected_threshold"] == 0.82
+          assert report["validation"]["false_accepts"] == 0
+          PY
       - name: Start MCP fixture
         run: |
           python -m uvicorn examples.fixture_server:app \
@@ -228,6 +255,13 @@ jobs:
         with:
           name: mendpact-model-comparison-report
           path: model-comparison-report.json
+          if-no-files-found: ignore
+      - name: Upload semantic calibration report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-semantic-calibration-report
+          path: semantic-calibration-report.json
           if-no-files-found: ignore
       - name: Upload guard report
         if: always()

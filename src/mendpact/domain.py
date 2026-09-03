@@ -103,6 +103,20 @@ class ArgumentMatch(StrEnum):
     EXACT = "exact"
 
 
+class CalibrationSplit(StrEnum):
+    """Dataset partition used to fit or independently validate a threshold."""
+
+    CALIBRATION = "calibration"
+    VALIDATION = "validation"
+
+
+class HumanLabel(StrEnum):
+    """Human judgment for one semantic-grading example."""
+
+    ACCEPT = "accept"
+    REJECT = "reject"
+
+
 class CapabilityNode(BaseModel):
     id: str
     kind: NodeKind
@@ -651,6 +665,124 @@ class ModelComparisonReport(BaseModel):
     reference: ModelRunSnapshot
     candidates: list[ModelRunSnapshot] = Field(min_length=1)
     comparisons: list[ModelCandidateComparison] = Field(min_length=1)
+    errors: list[str] = Field(default_factory=list)
+
+
+class SemanticLabelExample(BaseModel):
+    """One human-labelled example paired with a saved semantic-grader score."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, pattern=r"^[a-z0-9][a-z0-9_-]*$")
+    scenario_id: str = Field(min_length=1)
+    split: CalibrationSplit
+    task: str = Field(min_length=1)
+    expected_behavior: str = Field(min_length=1)
+    observed_behavior: str = Field(min_length=1)
+    human_label: HumanLabel
+    semantic_score: float = Field(ge=0.0, le=1.0)
+    rationale: str | None = Field(default=None, min_length=1)
+
+
+class SemanticLabelSet(BaseModel):
+    """Versioned human labels and provider-neutral semantic scores."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["mendpact.semantic-labels.v1"] = (
+        "mendpact.semantic-labels.v1"
+    )
+    name: str = Field(min_length=1)
+    grader: str = Field(min_length=1)
+    grader_version: str = Field(min_length=1)
+    examples: list[SemanticLabelExample] = Field(min_length=2)
+
+    @model_validator(mode="after")
+    def validate_unique_example_ids(self) -> SemanticLabelSet:
+        identifiers = [example.id for example in self.examples]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("Semantic label example IDs must be unique.")
+        return self
+
+
+class SemanticCalibrationPolicy(BaseModel):
+    """Minimum independent evidence required to trust a semantic grader."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_calibration_examples: int = Field(default=4, ge=2)
+    min_validation_examples: int = Field(default=4, ge=2)
+    min_validation_balanced_accuracy: float = Field(default=0.8, ge=0.0, le=1.0)
+    max_validation_false_accept_rate: float = Field(default=0.1, ge=0.0, le=1.0)
+
+
+class SemanticCalibrationMetrics(BaseModel):
+    """Confusion matrix and quality metrics for one dataset split."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    example_count: int = Field(ge=0)
+    accepted_labels: int = Field(ge=0)
+    rejected_labels: int = Field(ge=0)
+    true_accepts: int = Field(ge=0)
+    true_rejects: int = Field(ge=0)
+    false_accepts: int = Field(ge=0)
+    false_rejects: int = Field(ge=0)
+    accuracy: float = Field(ge=0.0, le=1.0)
+    balanced_accuracy: float = Field(ge=0.0, le=1.0)
+    precision: float = Field(ge=0.0, le=1.0)
+    recall: float = Field(ge=0.0, le=1.0)
+    specificity: float = Field(ge=0.0, le=1.0)
+    false_accept_rate: float = Field(ge=0.0, le=1.0)
+
+
+class SemanticCalibrationDisagreement(BaseModel):
+    """Auditable example where the calibrated grader and a human differ."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    example_id: str
+    scenario_id: str
+    split: CalibrationSplit
+    semantic_score: float = Field(ge=0.0, le=1.0)
+    human_label: HumanLabel
+    predicted_label: HumanLabel
+    rationale: str | None = None
+
+
+class SemanticCalibrationFinding(BaseModel):
+    """One policy result from independent semantic-grader validation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rule_id: str
+    impact: RegressionImpact
+    message: str
+    observed_value: int | float
+    required_value: int | float
+
+
+class SemanticCalibrationReport(BaseModel):
+    """Versioned evidence that calibrates and validates a semantic-score threshold."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["mendpact.semantic-calibration.v1"] = (
+        "mendpact.semantic-calibration.v1"
+    )
+    calibration_id: str = Field(default_factory=lambda: str(uuid4()))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    status: ScanStatus
+    label_set_name: str
+    label_set_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    grader: str
+    grader_version: str
+    selected_threshold: float = Field(ge=0.0, le=1.0)
+    policy: SemanticCalibrationPolicy
+    calibration: SemanticCalibrationMetrics
+    validation: SemanticCalibrationMetrics
+    disagreements: list[SemanticCalibrationDisagreement] = Field(default_factory=list)
+    findings: list[SemanticCalibrationFinding] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
 
 

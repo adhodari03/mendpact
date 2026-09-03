@@ -135,13 +135,33 @@ case "${mode}" in
     )
     append_boolean_flag "${allow_new_confusions}" --allow-new-confusions
     ;;
+  calibrate-grader)
+    semantic_labels="${MENDPACT_SEMANTIC_LABELS:-}"
+    if [[ -z "${semantic_labels}" ]]; then
+      echo "MendPact Action: semantic-labels is required in calibrate-grader mode." >&2
+      exit 2
+    fi
+    if [[ -n "${target}" || -n "${policy}" || -n "${auth_token_env}" || \
+       "${allow_private}" == "true" || "${allow_insecure_http}" == "true" ]]; then
+      echo "MendPact Action: calibrate-grader mode does not accept target, policy, authentication, or target allowance inputs." >&2
+      exit 2
+    fi
+    command_args=(
+      mendpact calibrate-grader "${semantic_labels}"
+      --min-calibration-examples "${MENDPACT_MIN_CALIBRATION_EXAMPLES:-4}"
+      --min-validation-examples "${MENDPACT_MIN_VALIDATION_EXAMPLES:-4}"
+      --min-validation-balanced-accuracy "${MENDPACT_MIN_VALIDATION_BALANCED_ACCURACY:-0.8}"
+      --max-validation-false-accept-rate "${MENDPACT_MAX_VALIDATION_FALSE_ACCEPT_RATE:-0.1}"
+      --output "${output}"
+    )
+    ;;
   *)
-    echo "MendPact Action: mode must be 'auth', 'scan', 'guard', or 'compare-models'." >&2
+    echo "MendPact Action: mode must be 'auth', 'scan', 'guard', 'compare-models', or 'calibrate-grader'." >&2
     exit 2
     ;;
 esac
 
-if [[ "${mode}" != "compare-models" ]]; then
+if [[ "${mode}" == "auth" || "${mode}" == "scan" || "${mode}" == "guard" ]]; then
   if [[ -n "${policy}" ]]; then
     command_args+=(--policy "${policy}")
   else

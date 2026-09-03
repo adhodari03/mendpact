@@ -206,6 +206,26 @@ average measured latency. This command reads existing artifacts only: it does no
 MCP server, call a model provider, execute a tool, or incur provider cost. See the
 [model comparison guide](docs/MODEL_COMPARISON.md) for the validation rules and CI policy.
 
+### Calibrate semantic grading against human labels
+
+Before trusting a semantic grader's score in CI, fit its threshold on reviewed calibration labels
+and measure it on a separate validation split:
+
+```bash
+mendpact calibrate-grader examples/calibration/semantic-labels.example.json \
+  --output semantic-calibration.json
+```
+
+MendPact selects the threshold without looking at validation labels, then reports balanced
+accuracy, false-accept rate, false rejects, and every human/grader disagreement. Minimum sample
+sizes and validation-quality limits produce CI exit code `1` when unmet. The report binds its
+results to a formatting-independent dataset digest and the exact grader name and version.
+
+The command consumes saved scores; it does not call an LLM judge or claim the included example is
+a production benchmark. It is an offline reliability check for a separately operated semantic
+grader. See the [semantic calibration guide](docs/SEMANTIC_CALIBRATION.md) for the data contract,
+selection rule, trust boundary, and CI policy.
+
 ## MCP contract diff
 
 MendPact can compare two versioned scan reports without reconnecting to either MCP server. It
@@ -275,7 +295,8 @@ policy.
 MendPact can run as a composite GitHub Action. Scan mode remains the default for backward
 compatibility, `auth` mode performs a credential-free OAuth preflight, guard mode runs the
 complete scan, contract, and affected-replay workflow, and `compare-models` evaluates saved
-behavior reports entirely offline.
+behavior reports entirely offline. `calibrate-grader` checks saved semantic scores against
+human-labelled calibration and validation examples.
 
 ```yaml
 - id: mendpact
@@ -313,6 +334,20 @@ To block a model upgrade that regresses saved behavior evidence:
 This mode does not accept or require a target, policy, credential, or network allowance. Its job
 summary displays the comparison policy, reference and candidate metrics, and compatibility
 findings. The JSON report remains the complete evidence artifact.
+
+Semantic calibration can run through the same Action:
+
+```yaml
+- uses: adhodari03/mendpact@v0.3.0
+  with:
+    mode: calibrate-grader
+    semantic-labels: mendpact/semantic-labels.json
+    min-calibration-examples: "20"
+    min-validation-examples: "20"
+    min-validation-balanced-accuracy: "0.90"
+    max-validation-false-accept-rate: "0.02"
+    output: mendpact-semantic-calibration.json
+```
 
 ## Policy as code
 

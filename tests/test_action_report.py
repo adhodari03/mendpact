@@ -300,3 +300,73 @@ def test_renders_model_comparison_matrix_and_findings() -> None:
     assert rendered.annotations[0].level == "error"
     assert rendered.annotations[1].level == "warning"
     assert "read-status" in rendered.annotations[1].message
+
+
+def test_renders_semantic_calibration_metrics_and_disagreements() -> None:
+    metrics = {
+        "example_count": 4,
+        "accepted_labels": 2,
+        "rejected_labels": 2,
+        "true_accepts": 2,
+        "true_rejects": 1,
+        "false_accepts": 1,
+        "false_rejects": 0,
+        "accuracy": 0.75,
+        "balanced_accuracy": 0.75,
+        "precision": 2 / 3,
+        "recall": 1.0,
+        "specificity": 0.5,
+        "false_accept_rate": 0.5,
+    }
+    payload: dict[str, object] = {
+        "schema_version": "mendpact.semantic-calibration.v1",
+        "status": "failed",
+        "label_set_name": "Reviewed routing labels",
+        "label_set_sha256": "a" * 64,
+        "grader": "semantic-judge",
+        "grader_version": "2026-09",
+        "selected_threshold": 0.82,
+        "policy": {
+            "min_calibration_examples": 4,
+            "min_validation_examples": 4,
+            "min_validation_balanced_accuracy": 0.8,
+            "max_validation_false_accept_rate": 0.1,
+        },
+        "calibration": {**metrics, "false_accepts": 0, "false_accept_rate": 0.0},
+        "validation": metrics,
+        "disagreements": [
+            {
+                "example_id": "val-dangerous-choice",
+                "scenario_id": "read-status",
+                "split": "validation",
+                "semantic_score": 0.9,
+                "human_label": "reject",
+                "predicted_label": "accept",
+            }
+        ],
+        "findings": [
+            {
+                "rule_id": "MP-CAL-004",
+                "impact": "failure",
+                "message": "Validation false-accept rate exceeds the configured maximum.",
+                "observed_value": 0.5,
+                "required_value": 0.1,
+            }
+        ],
+        "errors": [],
+    }
+
+    rendered = render_action_report(payload, "semantic-calibration.json")
+
+    assert "## MendPact Semantic Calibration" in rendered.summary
+    assert "### Calibrated grader" in rendered.summary
+    assert "semantic-judge" in rendered.summary
+    assert "### Validation policy" in rendered.summary
+    assert "### Calibration quality" in rendered.summary
+    assert "50.0%" in rendered.summary
+    assert "### Human/grader disagreements" in rendered.summary
+    assert "val-dangerous-choice" in rendered.summary
+    assert "### Applied policy" not in rendered.summary
+    assert rendered.annotations[0].level == "error"
+    assert rendered.annotations[1].level == "warning"
+    assert "false-accept rate" in rendered.annotations[1].message

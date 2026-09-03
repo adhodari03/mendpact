@@ -558,6 +558,160 @@ def _model_comparison_sections(
     return lines, annotations
 
 
+def _semantic_calibration_sections(
+    payload: dict[str, Any],
+) -> tuple[list[str], list[Annotation]]:
+    policy = payload.get("policy") or {}
+    calibration = payload.get("calibration") or {}
+    validation = payload.get("validation") or {}
+    lines = [
+        "### Calibrated grader",
+        "",
+        *_table(
+            ["Label set", "Grader", "Version", "Threshold", "Dataset SHA-256"],
+            [
+                [
+                    payload.get("label_set_name"),
+                    payload.get("grader"),
+                    payload.get("grader_version"),
+                    f"{float(payload.get('selected_threshold', 0)):.3f}",
+                    payload.get("label_set_sha256"),
+                ]
+            ],
+        ),
+        "",
+        "### Validation policy",
+        "",
+        *_table(
+            [
+                "Min calibration examples",
+                "Min validation examples",
+                "Min balanced accuracy",
+                "Max false-accept rate",
+            ],
+            [
+                [
+                    policy.get("min_calibration_examples"),
+                    policy.get("min_validation_examples"),
+                    f"{float(policy.get('min_validation_balanced_accuracy', 0)):.1%}",
+                    f"{float(policy.get('max_validation_false_accept_rate', 0)):.1%}",
+                ]
+            ],
+        ),
+        "",
+        "### Calibration quality",
+        "",
+        *_table(
+            [
+                "Split",
+                "Examples",
+                "Accuracy",
+                "Balanced accuracy",
+                "False accepts",
+                "False rejects",
+                "False-accept rate",
+            ],
+            [
+                [
+                    "Calibration",
+                    calibration.get("example_count", 0),
+                    f"{float(calibration.get('accuracy', 0)):.1%}",
+                    f"{float(calibration.get('balanced_accuracy', 0)):.1%}",
+                    calibration.get("false_accepts", 0),
+                    calibration.get("false_rejects", 0),
+                    f"{float(calibration.get('false_accept_rate', 0)):.1%}",
+                ],
+                [
+                    "Validation",
+                    validation.get("example_count", 0),
+                    f"{float(validation.get('accuracy', 0)):.1%}",
+                    f"{float(validation.get('balanced_accuracy', 0)):.1%}",
+                    validation.get("false_accepts", 0),
+                    validation.get("false_rejects", 0),
+                    f"{float(validation.get('false_accept_rate', 0)):.1%}",
+                ],
+            ],
+        ),
+    ]
+
+    findings = [
+        item for item in payload.get("findings", []) if isinstance(item, dict)
+    ]
+    if findings:
+        shown, omitted = _limited_rows(findings)
+        lines.extend(
+            [
+                "",
+                "### Calibration findings",
+                "",
+                *_table(
+                    ["Impact", "Rule", "Finding", "Observed", "Required"],
+                    [
+                        [
+                            str(item.get("impact", "unknown")).upper(),
+                            item.get("rule_id"),
+                            item.get("message"),
+                            item.get("observed_value"),
+                            item.get("required_value"),
+                        ]
+                        for item in shown
+                    ],
+                ),
+            ]
+        )
+        if omitted:
+            lines.extend(
+                ["", f"_{omitted} additional findings are available in the JSON report._"]
+            )
+
+    disagreements = [
+        item for item in payload.get("disagreements", []) if isinstance(item, dict)
+    ]
+    if disagreements:
+        shown, omitted = _limited_rows(disagreements)
+        lines.extend(
+            [
+                "",
+                "### Human/grader disagreements",
+                "",
+                *_table(
+                    ["Example", "Scenario", "Split", "Score", "Human", "Predicted"],
+                    [
+                        [
+                            item.get("example_id"),
+                            item.get("scenario_id"),
+                            item.get("split"),
+                            f"{float(item.get('semantic_score', 0)):.3f}",
+                            item.get("human_label"),
+                            item.get("predicted_label"),
+                        ]
+                        for item in shown
+                    ],
+                ),
+            ]
+        )
+        if omitted:
+            lines.extend(
+                [
+                    "",
+                    f"_{omitted} additional disagreements are available in the JSON report._",
+                ]
+            )
+
+    annotations = [
+        Annotation(
+            level="warning",
+            title=(
+                f"MendPact {item.get('rule_id', 'calibration')} "
+                f"({str(item.get('impact', 'unknown')).upper()})"
+            ),
+            message=str(item.get("message") or "Semantic calibration finding reported"),
+        )
+        for item in findings
+    ]
+    return lines, annotations
+
+
 def render_action_report(payload: dict[str, Any], report_path: str) -> ActionReport:
     schema = payload.get("schema_version")
     mode = {
@@ -565,6 +719,7 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
         "mendpact.guard.v1": "Guard",
         "mendpact.model-comparison.v1": "Model Comparison",
         "mendpact.scan.v1": "Scan",
+        "mendpact.semantic-calibration.v1": "Semantic Calibration",
     }.get(str(schema), "Report")
     lines = [
         f"## MendPact {mode}",
@@ -585,7 +740,7 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
     annotations: list[Annotation] = []
 
     policy = payload.get("policy")
-    if isinstance(policy, dict):
+    if isinstance(policy, dict) and policy.get("schema_version") == "mendpact.policy.v1":
         waivers = [item for item in policy.get("waivers", []) if isinstance(item, dict)]
         active_waivers = sum(item.get("status") == "active" for item in waivers)
         expired_waivers = sum(item.get("status") == "expired" for item in waivers)
@@ -659,6 +814,9 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
         lines.extend(section_lines)
     elif schema == "mendpact.model-comparison.v1":
         section_lines, annotations = _model_comparison_sections(payload)
+        lines.extend(section_lines)
+    elif schema == "mendpact.semantic-calibration.v1":
+        section_lines, annotations = _semantic_calibration_sections(payload)
         lines.extend(section_lines)
     else:
         lines.extend(

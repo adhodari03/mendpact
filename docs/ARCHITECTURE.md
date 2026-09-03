@@ -58,6 +58,24 @@ overall, per-scenario, and new-confusion rules prevent an improvement in one sce
 a regression in another. The output is provider-neutral, so future drivers can participate
 without changing the comparison engine.
 
+The semantic-calibration layer consumes scores from a separately operated semantic grader and
+human labels split into calibration and validation partitions:
+
+```text
+human labels + saved semantic scores
+                 |
+                 +--> calibration split --> threshold selection
+                 |
+                 +--> validation split ---> independent quality + false-accept policy
+                                              |
+                                              v
+                                versioned calibration report + CI status
+```
+
+Validation data never participates in threshold selection. The report binds the result to the
+grader name/version and a canonical dataset digest. This layer validates probabilistic grading;
+it does not override deterministic tool, schema, and forbidden-action checks.
+
 Contract intelligence compares two completed scan artifacts rather than contacting their
 targets again. It matches capabilities by stable graph node ID, classifies structural and schema
 changes, and joins tool changes with behavior expectations to calculate a scenario blast radius.
@@ -120,6 +138,7 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `grading.py` validates selected tools, arguments, and behavioral expectations.
 - `regression.py` creates versioned baselines and evaluates compatibility thresholds.
 - `model_comparison.py` validates and compares complete model behavior artifacts offline.
+- `calibration.py` calibrates saved semantic scores and validates them against human labels.
 - `contract_diff.py` compares scan graphs and maps changes to affected behavior scenarios.
 - `baseline.py` validates and deliberately promotes contract baseline candidates.
 - `guard.py` composes scanning, contract comparison, and affected replay evaluation.
