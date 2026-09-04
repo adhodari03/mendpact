@@ -89,8 +89,8 @@ security details.
 ## Behavioral evaluation
 
 MendPact can also test whether a model decision chose the intended MCP tool and produced valid
-arguments. Replay mode is deterministic and free to run, while the optional OpenAI driver asks a
-live model to select a tool through the Responses API. Neither mode executes the selected tool.
+arguments. Replay mode is deterministic and free to run, while optional OpenAI, Anthropic, and
+Gemini drivers ask a live model to select a tool. No driver executes the selected tool.
 
 With the fixture server running, evaluate the included scenario and recorded decision:
 
@@ -106,9 +106,9 @@ mendpact evaluate http://127.0.0.1:8000/mcp \
 A scenario states a natural-language task, the expected tool and arguments, and any forbidden
 tools. MendPact checks the replayed choice against the discovered tool catalog, validates its
 arguments with the tool's JSON Schema, and reports repeated wrong-tool choices as confusion
-edges. The provider-neutral trace format supports OpenAI now and additional model drivers later.
-A full report records the selected tool, arguments, resolved model, response ID,
-latency, and token counts without storing the API key or raw provider response.
+edges. The provider-neutral trace format makes results from supported providers comparable. A full
+report records the selected tool, arguments, resolved model, response ID, latency, and token counts
+without storing the API key or raw provider response.
 
 String comparison remains case-sensitive, and normalization is disabled by default. A scenario
 can explicitly normalize only string fields whose server contract treats formatting or letter
@@ -121,17 +121,24 @@ Paths use JSON Pointer syntax, and raw model arguments remain unchanged in repor
 }
 ```
 
-### Live OpenAI evaluation
+### Live provider evaluation
 
-Install the optional SDK and set the API key in your environment:
+Install only the provider SDKs that you need:
 
 ```bash
-python -m pip install -e '.[openai]'
-export OPENAI_API_KEY='your-key'
+python -m pip install -e '.[openai,anthropic,gemini]'
 ```
 
-Then run the same scenario with an explicit model. This makes a paid API request but still does
-not execute any MCP tool:
+Set the corresponding API key outside the repository:
+
+```bash
+export OPENAI_API_KEY='your-key'
+export ANTHROPIC_API_KEY='your-key'
+export GEMINI_API_KEY='your-key'
+```
+
+Choose one provider and an explicit model. This makes paid API requests but still does not execute
+any MCP tool:
 
 ```bash
 mendpact evaluate http://127.0.0.1:8000/mcp \
@@ -145,8 +152,9 @@ mendpact evaluate http://127.0.0.1:8000/mcp \
 ```
 
 The saved replay file can reproduce the decisions later without another model call. MendPact
-uses function definitions and single-call controls described in the
-[official OpenAI function-calling guide](https://developers.openai.com/api/docs/guides/function-calling).
+uses each provider's function or tool-calling interface and normalizes the result into the same
+report format. Replace `openai` and the model in the example with `anthropic` and a Claude model,
+or `gemini` and a Gemini model, to select another installed driver.
 
 ### Regression baselines
 

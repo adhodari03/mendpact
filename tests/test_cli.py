@@ -5,6 +5,7 @@ import pytest
 from click import unstyle
 from typer.testing import CliRunner
 
+import mendpact.cli as cli_module
 from mendpact.cli import app
 from mendpact.domain import (
     CapabilityGraph,
@@ -563,7 +564,8 @@ def test_replay_driver_requires_replay_file(tmp_path: Path) -> None:
     assert "--replay is required" in result.stdout
 
 
-def test_openai_driver_requires_explicit_model(tmp_path: Path) -> None:
+@pytest.mark.parametrize("driver", ["openai", "anthropic", "gemini"])
+def test_live_driver_requires_explicit_model(tmp_path: Path, driver: str) -> None:
     scenario = _write_scenario(tmp_path)
 
     result = runner.invoke(
@@ -574,12 +576,45 @@ def test_openai_driver_requires_explicit_model(tmp_path: Path) -> None:
             "--scenario",
             str(scenario),
             "--driver",
-            "openai",
+            driver,
         ],
     )
 
     assert result.exit_code == 2
-    assert "--model is required" in result.stdout
+    output = " ".join(unstyle(result.output).split())
+    assert f"--model is required when --driver is {driver}" in output
+
+
+@pytest.mark.parametrize(
+    ("driver", "constructor_name"),
+    [
+        (cli_module.BehaviorDriver.OPENAI, "OpenAIResponsesDriver"),
+        (cli_module.BehaviorDriver.ANTHROPIC, "AnthropicMessagesDriver"),
+        (cli_module.BehaviorDriver.GEMINI, "GeminiGenerateContentDriver"),
+    ],
+)
+def test_builds_selected_live_driver(
+    monkeypatch: pytest.MonkeyPatch,
+    driver: cli_module.BehaviorDriver,
+    constructor_name: str,
+) -> None:
+    sentinel = object()
+    received: dict[str, str] = {}
+
+    def build_driver(*, model: str) -> object:
+        received["model"] = model
+        return sentinel
+
+    monkeypatch.setattr(cli_module, constructor_name, build_driver)
+
+    selected = cli_module._build_behavior_driver(
+        driver,
+        replay=None,
+        model="provider-test-model",
+    )
+
+    assert selected is sentinel
+    assert received == {"model": "provider-test-model"}
 
 
 def test_behavior_threshold_requires_baseline_destination(tmp_path: Path) -> None:
