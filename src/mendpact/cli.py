@@ -794,6 +794,13 @@ def evaluate(
         int,
         typer.Option(min=1, max=100, help="Number of decisions per scenario"),
     ] = 1,
+    max_trials: Annotated[
+        int | None,
+        typer.Option(
+            min=1,
+            help="Stop before evaluation when scenarios multiplied by repetitions exceeds this",
+        ),
+    ] = None,
     output: Annotated[
         Path | None,
         typer.Option("--output", "-o", help="Write the full JSON report to this path"),
@@ -854,6 +861,13 @@ def evaluate(
 
     try:
         behavior_suite = load_behavior_suite(scenario)
+        requested_trials = len(behavior_suite.scenarios) * repetitions
+        if max_trials is not None and requested_trials > max_trials:
+            raise ValueError(
+                f"Evaluation requires {requested_trials} trials, exceeding --max-trials "
+                f"{max_trials}. Reduce the scenario count or repetitions, or explicitly raise "
+                "the limit."
+            )
         model_driver = _build_behavior_driver(driver, replay=replay, model=model)
         saved_baseline = load_behavior_baseline(baseline) if baseline is not None else None
         if (

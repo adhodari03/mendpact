@@ -75,7 +75,8 @@ criteria in this version.
 
 The comparison command parses local JSON and performs deterministic calculations. It never reads
 an API key, contacts an MCP endpoint or provider, or executes a selected tool. Provider cost is
-incurred only when creating new live behavior reports with `mendpact evaluate --driver openai`.
+incurred only when creating new live behavior reports with `mendpact evaluate --driver openai`,
+`--driver anthropic`, or `--driver gemini`.
 Saved reports or deterministic replays can be compared repeatedly at no provider cost.
 
 ## Policy as code

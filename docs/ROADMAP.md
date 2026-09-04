@@ -52,7 +52,8 @@
 
 ## Milestone 0.6 — cross-provider matrix
 
-- Anthropic and Gemini drivers
+- [x] Anthropic and Gemini drivers with mocked integration tests
+- [x] bounded replay and live-provider evaluation mode for the composite GitHub Action
 - [x] provider and model snapshots from complete behavior reports
 - [x] semantic-score threshold calibration against human labels
 - [x] offline compatibility comparison between model runs

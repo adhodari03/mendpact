@@ -617,6 +617,33 @@ def test_builds_selected_live_driver(
     assert received == {"model": "provider-test-model"}
 
 
+def test_max_trials_blocks_evaluation_before_driver_configuration(tmp_path: Path) -> None:
+    scenario = _write_scenario(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "evaluate",
+            "https://example.com/mcp",
+            "--scenario",
+            str(scenario),
+            "--driver",
+            "openai",
+            "--model",
+            "provider-test-model",
+            "--repetitions",
+            "2",
+            "--max-trials",
+            "1",
+        ],
+    )
+
+    assert result.exit_code == 2
+    output = " ".join(unstyle(result.output).split())
+    assert "requires 2 trials, exceeding --max-trials 1" in output
+    assert "OPENAI_API_KEY" not in output
+
+
 def test_behavior_threshold_requires_baseline_destination(tmp_path: Path) -> None:
     scenario = _write_scenario(tmp_path)
     replay = _write_replay(tmp_path)

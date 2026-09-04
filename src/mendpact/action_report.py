@@ -348,6 +348,94 @@ def _guard_sections(payload: dict[str, Any]) -> tuple[list[str], list[Annotation
     return lines, annotations
 
 
+def _behavior_sections(payload: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
+    summary = payload.get("summary") or {}
+    trial_count = int(summary.get("trial_count", 0))
+    total_latency = float(summary.get("total_latency_ms", 0))
+    lines = [
+        "### Model tool-selection evaluation",
+        "",
+        *_table(
+            [
+                "Driver / model",
+                "Scenarios",
+                "Trials",
+                "Passed",
+                "Failed",
+                "Pass rate",
+                "Tokens",
+                "Avg latency",
+            ],
+            [
+                [
+                    f"{payload.get('driver', '—')} / {payload.get('model', '—')}",
+                    summary.get("scenario_count", 0),
+                    trial_count,
+                    summary.get("passed_trials", 0),
+                    summary.get("failed_trials", 0),
+                    f"{float(summary.get('pass_rate', 0)):.1%}",
+                    summary.get("total_tokens", 0),
+                    f"{total_latency / trial_count:.0f} ms" if trial_count else "—",
+                ]
+            ],
+        ),
+    ]
+
+    failed_trials = [
+        item
+        for item in payload.get("trials", [])
+        if isinstance(item, dict) and not (item.get("grade") or {}).get("passed", False)
+    ]
+    if not failed_trials:
+        return lines, []
+
+    shown, omitted = _limited_rows(failed_trials)
+    lines.extend(
+        [
+            "",
+            "#### Failed trials",
+            "",
+            *_table(
+                ["Scenario", "Attempt", "Selected tool", "Reasons"],
+                [
+                    [
+                        (item.get("scenario") or {}).get("id"),
+                        (item.get("trace") or {}).get("attempt"),
+                        (item.get("trace") or {}).get("selected_tool"),
+                        (item.get("grade") or {}).get("reasons", []),
+                    ]
+                    for item in shown
+                ],
+            ),
+        ]
+    )
+    if omitted:
+        lines.extend(
+            ["", f"_{omitted} additional failed trials are available in the JSON report._"]
+        )
+
+    annotations = [
+        Annotation(
+            level="warning",
+            title="MendPact behavior trial failed",
+            message=" — ".join(
+                part
+                for part in (
+                    f"scenario {(item.get('scenario') or {}).get('id', 'unknown')}",
+                    f"attempt {(item.get('trace') or {}).get('attempt', 'unknown')}",
+                    ", ".join(
+                        str(reason)
+                        for reason in (item.get("grade") or {}).get("reasons", [])
+                    ),
+                )
+                if part
+            ),
+        )
+        for item in failed_trials
+    ]
+    return lines, annotations
+
+
 def _authorization_sections(
     payload: dict[str, Any],
 ) -> tuple[list[str], list[Annotation]]:
@@ -716,6 +804,7 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
     schema = payload.get("schema_version")
     mode = {
         "mendpact.authorization.v1": "Authorization",
+        "mendpact.behavior.v1": "Behavior",
         "mendpact.guard.v1": "Guard",
         "mendpact.model-comparison.v1": "Model Comparison",
         "mendpact.scan.v1": "Scan",
@@ -814,6 +903,9 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
         lines.extend(section_lines)
     elif schema == "mendpact.authorization.v1":
         section_lines, annotations = _authorization_sections(payload)
+        lines.extend(section_lines)
+    elif schema == "mendpact.behavior.v1":
+        section_lines, annotations = _behavior_sections(payload)
         lines.extend(section_lines)
     elif schema == "mendpact.scan.v1":
         section_lines, annotations = _scan_sections(payload)

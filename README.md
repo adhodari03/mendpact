@@ -304,7 +304,8 @@ MendPact can run as a composite GitHub Action. Scan mode remains the default for
 compatibility, `auth` mode performs a credential-free OAuth preflight, guard mode runs the
 complete scan, contract, and affected-replay workflow, and `compare-models` evaluates saved
 behavior reports entirely offline. `calibrate-grader` checks saved semantic scores against
-human-labelled calibration and validation examples.
+human-labelled calibration and validation examples. `evaluate` runs bounded replay or live
+provider tool-selection checks and never executes the selected MCP tool.
 
 ```yaml
 - id: mendpact
@@ -343,6 +344,30 @@ This mode does not accept or require a target, credential, or network allowance.
 `mendpact.policy.v2` file to own its thresholds, or use the individual inputs shown above. Its job
 summary displays the applied policy, reference and candidate metrics, and compatibility findings.
 The JSON report remains the complete evidence artifact.
+
+To collect a small live-provider sample, pass the provider key as an environment secret rather
+than an Action input. The default `max-trials: "10"` ceiling is checked before provider requests:
+
+```yaml
+- id: mendpact-live-evaluation
+  uses: adhodari03/mendpact@v0.3.0
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  with:
+    mode: evaluate
+    target: https://your-server.example/mcp
+    scenario: mendpact/scenarios.json
+    driver: anthropic
+    model: your-reviewed-claude-model
+    repetitions: "1"
+    max-trials: "10"
+    output: mendpact-behavior.json
+    save-replay: mendpact/replay.json
+```
+
+Only the selected provider SDK is installed. Review provider pricing and the scenario/tool
+metadata being shared before enabling this mode. Routine pull requests should continue using
+saved replays and offline comparisons.
 
 Semantic calibration can run through the same Action:
 
