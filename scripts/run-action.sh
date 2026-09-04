@@ -28,6 +28,15 @@ validate_boolean() {
   esac
 }
 
+validate_positive_integer() {
+  local value="$1"
+  local input_name="$2"
+  if [[ ! "${value}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "MendPact Action: ${input_name} must be a positive integer." >&2
+    exit 2
+  fi
+}
+
 append_boolean_flag() {
   local value="$1"
   local flag="$2"
@@ -79,6 +88,70 @@ case "${mode}" in
       command_args+=(--fail-on "${MENDPACT_FAIL_ON:-high}")
     fi
     command_args+=(--output "${output}")
+    ;;
+  evaluate)
+    scenario="${MENDPACT_SCENARIO:-}"
+    replay="${MENDPACT_REPLAY:-}"
+    driver="${MENDPACT_DRIVER:-replay}"
+    model="${MENDPACT_MODEL:-}"
+    repetitions="${MENDPACT_REPETITIONS:-1}"
+    max_trials="${MENDPACT_MAX_TRIALS:-10}"
+    if [[ -z "${target}" ]]; then
+      echo "MendPact Action: target is required in evaluate mode." >&2
+      exit 2
+    fi
+    if [[ -z "${scenario}" ]]; then
+      echo "MendPact Action: scenario is required in evaluate mode." >&2
+      exit 2
+    fi
+    if [[ -n "${policy}" ]]; then
+      echo "MendPact Action: evaluate mode does not accept policy; use explicit evaluation inputs." >&2
+      exit 2
+    fi
+    validate_positive_integer "${repetitions}" repetitions
+    validate_positive_integer "${max_trials}" max-trials
+    case "${driver}" in
+      replay)
+        if [[ -z "${replay}" ]]; then
+          echo "MendPact Action: replay is required with the replay evaluate driver." >&2
+          exit 2
+        fi
+        if [[ -n "${model}" ]]; then
+          echo "MendPact Action: model cannot be used with the replay evaluate driver." >&2
+          exit 2
+        fi
+        ;;
+      openai|anthropic|gemini)
+        if [[ -z "${model}" ]]; then
+          echo "MendPact Action: model is required with a live evaluate driver." >&2
+          exit 2
+        fi
+        if [[ -n "${replay}" ]]; then
+          echo "MendPact Action: replay cannot be used with a live evaluate driver." >&2
+          exit 2
+        fi
+        ;;
+      *)
+        echo "MendPact Action: evaluate driver must be 'replay', 'openai', 'anthropic', or 'gemini'." >&2
+        exit 2
+        ;;
+    esac
+    command_args=(
+      mendpact evaluate "${target}"
+      --scenario "${scenario}"
+      --driver "${driver}"
+      --repetitions "${repetitions}"
+      --max-trials "${max_trials}"
+      --output "${output}"
+    )
+    if [[ "${driver}" == "replay" ]]; then
+      command_args+=(--replay "${replay}")
+    else
+      command_args+=(--model "${model}")
+    fi
+    if [[ -n "${MENDPACT_SAVE_REPLAY:-}" ]]; then
+      command_args+=(--save-replay "${MENDPACT_SAVE_REPLAY}")
+    fi
     ;;
   guard)
     baseline="${MENDPACT_BASELINE:-}"
@@ -184,12 +257,13 @@ case "${mode}" in
     command_args+=(--output "${output}")
     ;;
   *)
-    echo "MendPact Action: mode must be 'auth', 'scan', 'guard', 'compare-models', or 'calibrate-grader'." >&2
+    echo "MendPact Action: mode must be 'auth', 'scan', 'evaluate', 'guard', 'compare-models', or 'calibrate-grader'." >&2
     exit 2
     ;;
 esac
 
-if [[ "${mode}" == "auth" || "${mode}" == "scan" || "${mode}" == "guard" ]]; then
+if [[ "${mode}" == "auth" || "${mode}" == "scan" || "${mode}" == "evaluate" || \
+      "${mode}" == "guard" ]]; then
   if [[ -n "${policy}" ]]; then
     command_args+=(--policy "${policy}")
   else

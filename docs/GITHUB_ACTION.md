@@ -6,16 +6,18 @@ Guard users select `mode: guard` and provide a committed scan baseline, plus an 
 scenario/replay pair. Model-release checks use `mode: compare-models` with two completed behavior
 reports and make no network request.
 Semantic-grader checks use `mode: calibrate-grader` with reviewed human labels and saved scores.
+Bounded tool-selection runs use `mode: evaluate` with replay data or one explicit live provider.
 
 The Action installs the MendPact version contained in the referenced Git revision. The first
 alpha reference was `v0.1.0`; PR-native feedback is introduced in `v0.2.0`. GitHub recommends
 pinning third-party actions to a full commit SHA when an immutable reference is required. Use
 `main` only for deliberate pre-release testing.
 
-Every authorization, scan, guard, and model-comparison run writes a Markdown result to the GitHub
-job summary and emits bounded workflow annotations for findings, contract changes, compatibility
-regressions, and report errors. These presentation steps do not change MendPact's configured
-pass/fail thresholds. The JSON report remains the complete, machine-readable source of truth.
+Every authorization, scan, evaluation, guard, and model-comparison run writes a Markdown result to
+the GitHub job summary and emits bounded workflow annotations for findings, failed behavior trials,
+contract changes, compatibility regressions, and report errors. These presentation steps do not
+change MendPact's configured pass/fail thresholds. The JSON report remains the complete,
+machine-readable source of truth.
 
 The immutable `v0.1.0` tag predates PR-native summaries. Use `v0.2.0` or a later release for this
 feedback.
@@ -183,6 +185,71 @@ workflow to choose retention, permissions, and naming policy.
 `save-scan` is a candidate artifact, not an automatically trusted baseline. Download it, run
 `mendpact baseline inspect`, review its target, scan ID, status, capabilities, and digest, then use
 `mendpact baseline promote` in a separate change. See [contract baseline lifecycle](BASELINES.md).
+
+## Bounded model evaluation mode
+
+Use `mode: evaluate` to create a behavior report from a deterministic replay or an explicit live
+provider. Replay is the default driver and remains appropriate for routine pull requests. A live
+run installs only its selected provider SDK and requires an explicit model:
+
+```yaml
+name: Small Anthropic routing check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  model-routing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - id: mendpact-evaluate
+        uses: adhodari03/mendpact@v0.3.0
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          mode: evaluate
+          target: https://your-server.example/mcp
+          scenario: mendpact/scenarios.json
+          driver: anthropic
+          model: your-reviewed-claude-model
+          repetitions: "1"
+          max-trials: "10"
+          output: mendpact-behavior.json
+          save-replay: mendpact/provider-replay.json
+      - if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-behavior
+          path: |
+            mendpact-behavior.json
+            mendpact/provider-replay.json
+          if-no-files-found: ignore
+          retention-days: 14
+```
+
+Use `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY` as an environment secret matching
+the selected driver. Provider credentials are deliberately not Action inputs and are never added
+to the MendPact command line. The `max-trials` input defaults to 10 and is enforced as scenario
+count multiplied by repetitions before the driver is configured. Increase it only in a reviewed
+workflow after estimating cost. The `saved-replay` output exposes the configured replay path; the
+consumer still controls upload and retention.
+
+Live evaluation sends scenario tasks and discovered tool metadata to the selected provider. It
+does not execute the returned MCP tool. Prefer `workflow_dispatch`, protected environments, and
+synthetic scenarios. Pull requests from forks do not receive ordinary repository secrets, and
+workflows must not use `pull_request_target` to run untrusted scenario or Action code with a
+provider key.
+
+For a provider-free standalone evaluation, omit `model`, keep `driver: replay`, and supply
+`replay:`. This mode still connects to the configured MCP endpoint to discover its current tool
+catalog, but it makes no model-provider request.
 
 ## Offline model comparison mode
 

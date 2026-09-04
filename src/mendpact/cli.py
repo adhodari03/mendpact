@@ -37,7 +37,15 @@ from mendpact.domain import (
     SemanticCalibrationPolicy,
     Severity,
 )
+from mendpact.drivers.anthropic import (
+    AnthropicDriverConfigurationError,
+    AnthropicMessagesDriver,
+)
 from mendpact.drivers.base import ModelDriver
+from mendpact.drivers.gemini import (
+    GeminiDriverConfigurationError,
+    GeminiGenerateContentDriver,
+)
 from mendpact.drivers.openai import (
     OpenAIDriverConfigurationError,
     OpenAIResponsesDriver,
@@ -103,6 +111,8 @@ app.add_typer(baseline_app, name="baseline")
 class BehaviorDriver(StrEnum):
     REPLAY = "replay"
     OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    GEMINI = "gemini"
 
 
 def _build_behavior_driver(
@@ -115,14 +125,18 @@ def _build_behavior_driver(
         if replay is None:
             raise ValueError("--replay is required when --driver is replay.")
         if model is not None:
-            raise ValueError("--model can only be used with --driver openai.")
+            raise ValueError("--model can only be used with a live model driver.")
         return ReplayDriver(load_replay_plan(replay))
 
     if replay is not None:
         raise ValueError("--replay can only be used with --driver replay.")
     if model is None:
-        raise ValueError("--model is required when --driver is openai.")
-    return OpenAIResponsesDriver(model=model)
+        raise ValueError(f"--model is required when --driver is {driver.value}.")
+    if driver == BehaviorDriver.OPENAI:
+        return OpenAIResponsesDriver(model=model)
+    if driver == BehaviorDriver.ANTHROPIC:
+        return AnthropicMessagesDriver(model=model)
+    return GeminiGenerateContentDriver(model=model)
 
 
 def _behavior_thresholds(
@@ -774,12 +788,19 @@ def evaluate(
     ] = BehaviorDriver.REPLAY,
     model: Annotated[
         str | None,
-        typer.Option(help="OpenAI model name used for live evaluations"),
+        typer.Option(help="Provider model name used for live evaluations"),
     ] = None,
     repetitions: Annotated[
         int,
         typer.Option(min=1, max=100, help="Number of decisions per scenario"),
     ] = 1,
+    max_trials: Annotated[
+        int | None,
+        typer.Option(
+            min=1,
+            help="Stop before evaluation when scenarios multiplied by repetitions exceeds this",
+        ),
+    ] = None,
     output: Annotated[
         Path | None,
         typer.Option("--output", "-o", help="Write the full JSON report to this path"),
@@ -840,6 +861,13 @@ def evaluate(
 
     try:
         behavior_suite = load_behavior_suite(scenario)
+        requested_trials = len(behavior_suite.scenarios) * repetitions
+        if max_trials is not None and requested_trials > max_trials:
+            raise ValueError(
+                f"Evaluation requires {requested_trials} trials, exceeding --max-trials "
+                f"{max_trials}. Reduce the scenario count or repetitions, or explicitly raise "
+                "the limit."
+            )
         model_driver = _build_behavior_driver(driver, replay=replay, model=model)
         saved_baseline = load_behavior_baseline(baseline) if baseline is not None else None
         if (
@@ -862,6 +890,8 @@ def evaluate(
         authentication = load_bearer_authentication(auth_token_env)
     except (
         AuthenticationConfigurationError,
+        AnthropicDriverConfigurationError,
+        GeminiDriverConfigurationError,
         OSError,
         ValueError,
         OpenAIDriverConfigurationError,

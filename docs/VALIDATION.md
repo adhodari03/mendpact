@@ -69,7 +69,8 @@ request.
 
 - One real request validates the integration path, not the reliability of a model over time.
 - Only the OpenAI driver has received a live provider check.
-- Anthropic and Gemini drivers have not been implemented or tested.
+- Anthropic and Gemini drivers are implemented and covered by mocked SDK-contract tests, but they
+  have not received a live provider check.
 - The real response identifier is intentionally not committed.
 - The full local report remains outside the repository.
 - Provider prices, model behavior, and API contracts can change and must be rechecked before a

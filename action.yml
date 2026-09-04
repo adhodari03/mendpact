@@ -1,5 +1,5 @@
 name: MendPact MCP Reliability
-description: Audit, scan, guard, compare models, or calibrate AI grading for MCP integrations.
+description: Audit, scan, evaluate, guard, compare models, or calibrate AI grading for MCP.
 author: MendPact
 branding:
   icon: shield
@@ -7,11 +7,11 @@ branding:
 
 inputs:
   mode:
-    description: Run `auth`, `scan`, `guard`, `compare-models`, or `calibrate-grader` mode.
+    description: Run auth, scan, evaluate, guard, compare-models, or calibrate-grader mode.
     required: false
     default: scan
   target:
-    description: Remote Streamable HTTP MCP endpoint required by auth, scan, and guard modes.
+    description: Remote Streamable HTTP MCP endpoint for auth, scan, evaluate, and guard modes.
     required: false
     default: ""
   policy:
@@ -31,17 +31,33 @@ inputs:
     required: false
     default: ""
   scenario:
-    description: Optional behavior suite for guard blast-radius analysis.
+    description: Behavior suite required by evaluate and optional for guard blast-radius analysis.
     required: false
     default: ""
   replay:
-    description: Replay plan paired with the guard behavior suite.
+    description: Replay plan required by evaluate replay mode or paired with a guard suite.
     required: false
     default: ""
   repetitions:
-    description: Replay decisions per affected scenario in guard mode.
+    description: Decisions per scenario in evaluate or guard mode.
     required: false
     default: "1"
+  driver:
+    description: Evaluate driver; replay, openai, anthropic, or gemini.
+    required: false
+    default: replay
+  model:
+    description: Explicit provider model required for a live evaluate driver.
+    required: false
+    default: ""
+  max-trials:
+    description: Maximum scenario count multiplied by repetitions in evaluate mode.
+    required: false
+    default: "10"
+  save-replay:
+    description: Optional path for saving complete evaluate decisions as replay data.
+    required: false
+    default: ""
   scan-fail-on:
     description: Minimum deterministic severity that fails guard mode.
     required: false
@@ -109,11 +125,14 @@ inputs:
 
 outputs:
   report:
-    description: Path to the generated authorization, scan, guard, comparison, or calibration report.
+    description: Path to the generated scan, evaluation, guard, comparison, or calibration report.
     value: ${{ steps.metadata.outputs.report }}
   candidate-scan:
     description: Candidate scan path when `save-scan` is configured.
     value: ${{ steps.metadata.outputs.candidate-scan }}
+  saved-replay:
+    description: Replay path when `save-replay` is configured in evaluate mode.
+    value: ${{ steps.metadata.outputs.saved-replay }}
   mode:
     description: MendPact mode executed by the action.
     value: ${{ steps.metadata.outputs.mode }}
@@ -128,8 +147,9 @@ runs:
         MENDPACT_MODE: ${{ inputs.mode }}
         MENDPACT_OUTPUT: ${{ inputs.output }}
         MENDPACT_SAVE_SCAN: ${{ inputs.save-scan }}
+        MENDPACT_SAVE_REPLAY: ${{ inputs.save-replay }}
       run: |
-        case "${MENDPACT_MODE}${MENDPACT_OUTPUT}${MENDPACT_SAVE_SCAN}" in
+        case "${MENDPACT_MODE}${MENDPACT_OUTPUT}${MENDPACT_SAVE_SCAN}${MENDPACT_SAVE_REPLAY}" in
           *$'\n'*|*$'\r'*)
             echo "MendPact Action: output metadata cannot contain newlines." >&2
             exit 2
@@ -138,12 +158,15 @@ runs:
         echo "mode=${MENDPACT_MODE}" >> "${GITHUB_OUTPUT}"
         echo "report=${MENDPACT_OUTPUT}" >> "${GITHUB_OUTPUT}"
         echo "candidate-scan=${MENDPACT_SAVE_SCAN}" >> "${GITHUB_OUTPUT}"
+        echo "saved-replay=${MENDPACT_SAVE_REPLAY}" >> "${GITHUB_OUTPUT}"
 
     - name: Install MendPact
       shell: bash
       env:
         MENDPACT_ACTION_PATH: ${{ github.action_path }}
-      run: python -m pip install "${MENDPACT_ACTION_PATH}"
+        MENDPACT_MODE: ${{ inputs.mode }}
+        MENDPACT_DRIVER: ${{ inputs.driver }}
+      run: bash "${MENDPACT_ACTION_PATH}/scripts/install-action.sh"
 
     - name: Run MendPact
       shell: bash
@@ -157,6 +180,10 @@ runs:
         MENDPACT_SCENARIO: ${{ inputs.scenario }}
         MENDPACT_REPLAY: ${{ inputs.replay }}
         MENDPACT_REPETITIONS: ${{ inputs.repetitions }}
+        MENDPACT_DRIVER: ${{ inputs.driver }}
+        MENDPACT_MODEL: ${{ inputs.model }}
+        MENDPACT_MAX_TRIALS: ${{ inputs.max-trials }}
+        MENDPACT_SAVE_REPLAY: ${{ inputs.save-replay }}
         MENDPACT_SCAN_FAIL_ON: ${{ inputs.scan-fail-on }}
         MENDPACT_CONTRACT_FAIL_ON: ${{ inputs.contract-fail-on }}
         MENDPACT_ALLOW_PRIVATE: ${{ inputs.allow-private }}

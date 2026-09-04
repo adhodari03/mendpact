@@ -126,6 +126,48 @@ def test_renders_guard_stages_contract_changes_and_failed_trials() -> None:
     assert "wrong tool" in rendered.summary
 
 
+def test_renders_standalone_behavior_evaluation() -> None:
+    payload: dict[str, object] = {
+        "schema_version": "mendpact.behavior.v1",
+        "status": "failed",
+        "target": "https://example.com/mcp",
+        "driver": "anthropic",
+        "model": "claude-test-model",
+        "repetitions": 1,
+        "summary": {
+            "scenario_count": 2,
+            "trial_count": 2,
+            "passed_trials": 1,
+            "failed_trials": 1,
+            "pass_rate": 0.5,
+            "total_tokens": 80,
+            "total_latency_ms": 50,
+        },
+        "trials": [
+            {
+                "scenario": {"id": "read-status"},
+                "trace": {"attempt": 1, "selected_tool": "delete_project"},
+                "grade": {"passed": False, "reasons": ["wrong tool"]},
+            }
+        ],
+        "errors": [],
+    }
+
+    rendered = render_action_report(payload, "behavior.json")
+
+    assert "## MendPact Behavior" in rendered.summary
+    assert "### Model tool-selection evaluation" in rendered.summary
+    assert "anthropic / claude-test-model" in rendered.summary
+    assert "50.0%" in rendered.summary
+    assert "80" in rendered.summary
+    assert "25 ms" in rendered.summary
+    assert "read-status" in rendered.summary
+    assert "delete_project" in rendered.summary
+    assert "wrong tool" in rendered.summary
+    assert rendered.annotations[0].level == "error"
+    assert rendered.annotations[1].level == "warning"
+
+
 def test_escapes_github_workflow_annotation_commands() -> None:
     command = format_annotation(
         Annotation(
