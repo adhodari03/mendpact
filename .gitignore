@@ -57,7 +57,7 @@ __pycache__/
 # Python packaging and build output
 build/
 dist/
-site/
+# site/ is maintained GitHub Pages source, not generated build output.
 wheels/
 *.egg-info/
 *.egg
