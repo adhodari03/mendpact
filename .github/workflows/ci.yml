@@ -28,6 +28,13 @@ jobs:
         run: python -m mypy src
       - name: Test
         run: python -m pytest --cov=mendpact --cov-report=term-missing
+      - name: Offline evidence export smoke test
+        run: |
+          mkdir -p reports
+          mendpact export-report examples/contracts/candidate-scan.json \
+            --output reports/scan-evidence.html
+          mendpact export-report examples/model-comparison/reference-behavior.json \
+            --format json --output reports/behavior-evidence.json
       - name: MCP contract diff smoke test
         run: >-
           mendpact diff
@@ -171,6 +178,22 @@ jobs:
           assert report["summary"]["contract_status"] == "failed"
           assert report["summary"]["behavior_status"] == "passed"
           PY
+      - name: Export failed guard evidence without changing its verdict
+        run: |
+          mendpact export-report strict-policy-report.json \
+            --output reports/failed-guard-evidence.html
+          mendpact export-report strict-policy-report.json \
+            --format json --output reports/failed-guard-evidence.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("reports/failed-guard-evidence.json").read_text())
+          assert report["schema_version"] == "mendpact.evidence.v1"
+          assert report["recorded_status"] == "failed"
+          assert "target" not in report
+          assert report["sections"][0]["metrics"]["Fails on severity"] == "high"
+          PY
       - name: Verify controlled waivers are visible and time bounded
         shell: bash
         env:
@@ -273,6 +296,18 @@ jobs:
         with:
           name: mendpact-guard-report
           path: guard-report.json
+          if-no-files-found: ignore
+      - name: Upload fixture evidence summaries
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mendpact-fixture-evidence
+          path: |
+            reports/scan-evidence.html
+            reports/behavior-evidence.json
+            reports/failed-guard-evidence.html
+            reports/failed-guard-evidence.json
+          retention-days: 14
           if-no-files-found: ignore
       - name: Upload strict policy report
         if: always()

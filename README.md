@@ -301,6 +301,27 @@ status. The workflow does not execute MCP tools or contact a model provider, so 
 deterministic and free to run. See the [guard reference](docs/GUARD.md) for its stage and exit-code
 policy.
 
+## Shareable evidence summaries
+
+Turn a saved scan, behavior, or guard report into a self-contained HTML summary without making
+network requests or publishing the source report:
+
+```bash
+mkdir -p reports
+mendpact export-report guard-report.json --output reports/evidence.html
+```
+
+Open the HTML file locally and review it before sharing. The export omits targets, capability
+names, prompts, arguments, provider metadata, raw errors, and waiver identities. It retains
+aggregate counts, recorded outcomes, failure thresholds, the source timestamp, and a SHA-256 of
+the original file. Missing guard stages are explicitly marked as skipped. A passed result does
+not imply an absence of findings or a safety certification.
+
+Use `--format json --output reports/evidence.json` for a `mendpact.evidence.v1` summary.
+Existing output files are never overwritten. Export success is not a CI reliability gate: a
+failed source report can be exported successfully while retaining its failed status. See the
+[evidence export guide](docs/EVIDENCE_EXPORT.md) for validation, privacy boundaries, and CI usage.
+
 ## GitHub Action
 
 MendPact can run as a composite GitHub Action. Scan mode remains the default for backward

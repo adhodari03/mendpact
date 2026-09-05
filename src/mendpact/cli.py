@@ -51,6 +51,7 @@ from mendpact.drivers.openai import (
     OpenAIResponsesDriver,
 )
 from mendpact.drivers.replay import ReplayDriver
+from mendpact.evidence import EvidenceExportError, export_evidence
 from mendpact.guard import guard_mcp_url
 from mendpact.model_comparison import compare_behavior_reports, load_behavior_report
 from mendpact.policy import (
@@ -113,6 +114,32 @@ class BehaviorDriver(StrEnum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
+
+
+class EvidenceFormat(StrEnum):
+    HTML = "html"
+    JSON = "json"
+
+
+@app.command("export-report")
+def export_report(
+    source: Annotated[Path, typer.Argument(help="Saved scan, behavior, or guard JSON report")],
+    output: Annotated[
+        Path, typer.Option("--output", help="New local output file; never overwritten")
+    ],
+    format: Annotated[
+        EvidenceFormat, typer.Option("--format", help="Shareable HTML or versioned summary JSON")
+    ] = EvidenceFormat.HTML,
+) -> None:
+    """Export a privacy-minimized evidence summary offline. Does not publish anything."""
+
+    try:
+        export_evidence(source, output, format=format.value)
+    except EvidenceExportError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo("Evidence summary exported. Review before sharing; no files were uploaded.")
+    typer.echo("Export success does not mean the source checks passed.")
 
 
 def _build_behavior_driver(
