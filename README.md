@@ -7,6 +7,9 @@ the exposed surface, runs deterministic safety checks, and emits a CI-friendly r
 > **Status:** early development. MendPact reports observable risks and compatibility signals;
 > it does not certify that an agent is safe.
 
+The static project website is maintained in `site/`. See the
+[website guide](docs/WEBSITE.md) for local preview and GitHub Pages deployment.
+
 ## Why start here?
 
 Remote MCP discovery gives maintainers value without asking them to install an SDK in their
