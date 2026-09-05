@@ -62,8 +62,26 @@
 
 ## Milestone 0.7 — hosted beta
 
-- projects, authentication, and encrypted bring-your-own-key storage
-- scheduled scans and GitHub checks
-- PostgreSQL persistence and object storage
-- versioned public reports and signed passports
-- opt-in compatibility index
+The first slice prepares reviewed evidence for sharing without operating a hosted service.
+Completed implementation is not equivalent to deployment or validation on customer workloads.
+
+- [x] offline privacy-minimized HTML and versioned JSON evidence export for scan, behavior, and guard
+- [x] explicit thresholds, skipped stages, source-file digests, and unsigned-evidence disclaimers
+- [ ] review-and-publish workflow for versioned public evidence
+- [ ] projects, authentication, and encrypted bring-your-own-key storage
+- [ ] scheduled scans and GitHub checks
+- [ ] PostgreSQL persistence and object storage
+- [ ] signed passports with a documented issuer and verification trust model
+- [ ] opt-in compatibility index
+
+### Recommended implementation sequence
+
+1. Collect feedback on locally exported summaries using fixture or explicitly approved evidence.
+2. Add a local run-history index and comparison view before choosing hosted storage.
+3. Design authenticated projects, report access controls, deletion, and retention; request review
+   before introducing hosted infrastructure or credential custody.
+4. Build explicit publication consent and only then introduce a public evidence index.
+
+Signing cannot certify safety or prove that an API call happened. Its scope, issuer identity,
+expiry, and revocation model need review before implementation. No hosting costs or live provider
+tests are implied by this sequence.

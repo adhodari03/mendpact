@@ -312,3 +312,35 @@ project initializer and committed production example now generate the reviewed v
 No MCP endpoint, model provider, credential, tool execution, network request, or paid operation was
 used. The local fixture is explicitly test-only. Production parsing independently enforces the
 documented model-regression, confusion, sample-size, balanced-accuracy, and false-accept limits.
+
+## Privacy-minimized evidence export validation
+
+Date: September 5, 2026
+
+The first hosted-beta preparation slice adds an offline exporter, not a hosted service. The full
+local suite passed 293 tests, including 37 evidence-export tests. Ruff, strict MyPy, CI YAML
+parsing, and diff whitespace validation passed. The export module reached 98% statement coverage
+in its focused test run. These results are local; the new GitHub workflow steps have not yet run
+remotely.
+
+Tests cover explicit source versions and headers, duplicate/non-finite JSON rejection, bounded
+regular-file input, symlink and FIFO refusal, safe no-overwrite output, HTML escaping, restrictive
+CSP, network-denied export, source-byte SHA-256, source-text sentinel omission, failed/error/skipped
+outcomes, guard stage consistency, and CLI exit semantics. Provider-labelled test fixtures are
+not evidence of a live provider request.
+
+Local CLI smoke checks exported the committed scan and replay behavior fixtures to HTML and
+versioned summary JSON. An independently running MCP fixture on loopback port 8769 was scanned
+under the deliberately permissive critical threshold and then guarded under the local strict
+policy. The guard correctly returned exit code 1 for its high-severity finding. Both evidence
+exports returned exit code 0 while retaining recorded status `failed`, scan `failed`, contract
+`passed`, and behavior `skipped` (no contract change affected a scenario). The temporary fixture
+server was stopped after verification.
+
+The generated scan and guard HTML were inspected in the browser. Desktop stage cards were
+readable, and a 375-pixel viewport check found no horizontal overflow. Sample outputs live under
+the ignored `reports/` directory; no source or summary was published to GitHub Pages.
+
+No credentials were loaded, model providers called, or MCP tools executed. Only local fixture
+discovery used networking. This validates export mechanics and basic evidence consistency, not
+report authenticity, a cryptographic attestation, production safety, or a hosted deployment.
