@@ -55,6 +55,19 @@ jobs:
           assert report["stages"][0]["comparable"] is True
           assert "target" not in report and "context" not in report
           PY
+      - name: Prepare and inspect a fixture sharing package without approval
+        run: |
+          mendpact share prepare examples/contracts/candidate-scan.json \
+            --output reports/fixture-sharing-package.zip
+          mendpact share inspect reports/fixture-sharing-package.zip
+          python - <<'PY'
+          from pathlib import Path
+          from mendpact.sharing import inspect_package
+
+          package = inspect_package(Path("reports/fixture-sharing-package.zip"))
+          assert package.summary.recorded_status == "passed"
+          assert package.summary.source_schema == "mendpact.scan.v1"
+          PY
       - name: MCP contract diff smoke test
         run: >-
           mendpact diff

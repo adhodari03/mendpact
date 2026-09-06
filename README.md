@@ -350,6 +350,35 @@ Run `mendpact history prune` to preview entries imported at least 14 days ago. A
 delete eligible rows; original report files remain unchanged. Cleanup is explicit, not scheduled.
 See the [local history guide](docs/HISTORY.md) for storage, retention, and comparison limits.
 
+## Review evidence before sharing
+
+Prepare a fixed-content ZIP containing only minimized HTML, summary JSON, and an integrity
+manifest. The raw report is not included:
+
+```bash
+mkdir -p reports
+mendpact share prepare guard-report.json --output reports/review-package.zip
+mendpact share inspect reports/review-package.zip
+```
+
+Review `index.html` inside the ZIP and the inspection output. To record a local acknowledgement
+for the exact package, paste its reviewed fingerprint:
+
+```bash
+mendpact share approve reports/review-package.zip \
+  --accept-sha256 REVIEWED_PACKAGE_SHA256 \
+  --acknowledge-public \
+  --output reports/sharing-approval.json
+
+mendpact share verify reports/review-package.zip \
+  --approval reports/sharing-approval.json
+```
+
+Approval lasts seven days by default and at most 14 days. These commands do not upload or publish
+anything. An unsigned acknowledgement is not proof of reviewer identity, a live provider call,
+or safety. Verification does not change the source report's failed/error outcome. See the
+[reviewed sharing guide](docs/SHARING.md) for exact-byte checks, expiry, and publication limits.
+
 ## GitHub Action
 
 MendPact can run as a composite GitHub Action. Scan mode remains the default for backward

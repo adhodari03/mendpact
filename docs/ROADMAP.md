@@ -69,6 +69,7 @@ Completed implementation is not equivalent to deployment or validation on custom
 - [x] explicit thresholds, skipped stages, source-file digests, and unsigned-evidence disclaimers
 - [x] local minimized run-history store with deduplication and bounded listing
 - [x] descriptive history comparison with target/setup checks and explicit 14-day cleanup
+- [x] local sharing-package preparation, inspection, exact-byte acknowledgement, and expiry checks
 - [ ] review-and-publish workflow for versioned public evidence
 - [ ] projects, authentication, and encrypted bring-your-own-key storage
 - [ ] scheduled scans and GitHub checks
@@ -83,7 +84,9 @@ Completed implementation is not equivalent to deployment or validation on custom
    gather feedback before choosing hosted storage.
 3. Design authenticated projects, report access controls, deletion, and retention; request review
    before introducing hosted infrastructure or credential custody.
-4. Build explicit publication consent and only then introduce a public evidence index.
+4. Integrate the reviewed-package acknowledgement with an authenticated publisher. Define hosted
+   expiry, deletion and revocation before introducing a public evidence index. Local unsigned
+   receipts alone do not establish reviewer identity or provide remote access control.
 
 Signing cannot certify safety or prove that an API call happened. Its scope, issuer identity,
 expiry, and revocation model need review before implementation. No hosting costs or live provider

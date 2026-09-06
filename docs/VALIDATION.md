@@ -381,3 +381,42 @@ was deleted, and no data was published. Actual pruning was exercised only on tes
 databases. History contains minimized local evidence, not encrypted storage or authenticated
 attestations; its comparisons are descriptive and do not replace reliability gates. The explicit
 14-day cleanup command is implemented, but no background cleanup or hosted service was enabled.
+
+## Reviewed sharing package validation
+
+Date: September 6, 2026
+
+This slice was implemented on `feat/reviewed-sharing-packages`, starting from the committed local
+history feature. At branch creation, the history commit was pushed but had not yet appeared in
+`origin/main`; merge the history PR before this dependent feature PR.
+
+The complete local suite passed 378 tests, including 49 sharing-package tests, with resource
+warnings treated as errors. Ruff, strict MyPy, CI YAML parsing, and diff whitespace validation
+passed. Focused statement coverage was 97% for sharing logic and 85% for the CLI (94% combined).
+The new GitHub smoke step has not yet run remotely.
+
+Tests cover deterministic fixed-content ZIPs, source-text omission, all supported report types,
+full guard-stage packages, unchanged source/output files, explicit acknowledgement, exact
+package-digest binding, receipt lifetime and expiry boundaries, malformed receipts, duplicate
+JSON keys, and rejection of compressed, symlink, duplicate, unexpected, traversal, altered, and
+trailing-content archive inputs. Inspection checks content without extracting it. Arbitrary
+summary text and HTML changes are rejected even when an artifact digest is recomputed. A
+network-denied test exercises the complete CLI workflow on synthetic data.
+
+Additional testing found that a literal-boolean model field could accept numeric `1` as `true`.
+Verification now checks the raw JSON acknowledgement is the boolean `true`, with regression
+tests for numeric and string substitutes. This is a format check, not proof of human consent.
+
+A local CLI smoke prepared and inspected the committed candidate-scan fixture; both commands
+returned the same package fingerprint. The generated ZIP remains in an ignored local reports
+directory and was neither approved nor published. Acknowledgement and verification were exercised
+only with test-owned synthetic fixtures. No production approval receipt was created.
+
+The shared atomic no-overwrite writer now supports bytes so ZIP output uses the same protections
+as text evidence. Existing evidence-export and history tests continue to pass. No provider API,
+MCP endpoint, credential, hosting account, GitHub Pages deployment, or external upload was used.
+
+Successful verification only establishes matching package bytes and an unexpired unsigned local
+acknowledgement. It does not authenticate the reviewer, establish source freshness, certify
+safety, or recall previously shared copies. An authenticated publisher, remote revocation,
+hosted deletion, and signed attestations remain unimplemented.

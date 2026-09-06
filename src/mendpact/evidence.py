@@ -319,6 +319,12 @@ def export_evidence(source: Path, destination: Path, *, format: Literal["html", 
 def write_new_evidence_file(destination: Path, content: str) -> None:
     """Write a completed evidence artifact atomically without replacing existing files."""
 
+    write_new_evidence_bytes(destination, (content + "\n").encode("utf-8"))
+
+
+def write_new_evidence_bytes(destination: Path, content: bytes) -> None:
+    """Atomically create a local evidence file, including binary review bundles."""
+
     parent = destination.absolute().parent
     if any(path.is_symlink() for path in (parent, *parent.parents)):
         raise EvidenceExportError("Output directory must not contain symlinks.")
@@ -326,8 +332,8 @@ def write_new_evidence_file(destination: Path, content: str) -> None:
     try:
         descriptor, name = tempfile.mkstemp(prefix=".mendpact-evidence-", dir=parent)
         temporary = Path(name)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            stream.write(content + "\n")
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
         # A hard link atomically creates the destination and fails if it already exists.

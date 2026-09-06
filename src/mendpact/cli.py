@@ -96,6 +96,7 @@ from mendpact.security.auth import (
     load_bearer_authentication,
 )
 from mendpact.security.targets import TargetPolicy
+from mendpact.sharing_cli import app as sharing_app
 
 app = typer.Typer(
     name="mendpact",
@@ -109,6 +110,7 @@ baseline_app = typer.Typer(
 )
 app.add_typer(baseline_app, name="baseline")
 app.add_typer(history_app, name="history")
+app.add_typer(sharing_app, name="share")
 
 
 class BehaviorDriver(StrEnum):
