@@ -41,6 +41,11 @@ mendpact scan http://127.0.0.1:8000/mcp \
 The fixture intentionally exposes a destructive-looking tool, so this scan exits with code `1`
 and demonstrates the CI failure path.
 
+For authorized tests against independently developed servers, follow the
+[real-world validation playbook](docs/REAL_WORLD_VALIDATION.md). It includes an offline workspace
+setup script, strict policy selection, reproducibility notes, and a finding-review template.
+Preparing a workspace does not run a scan or call a model provider.
+
 ## Initialize a repository
 
 Create a production-safe policy and GitHub scan workflow in an application repository:

@@ -420,3 +420,28 @@ Successful verification only establishes matching package bytes and an unexpired
 acknowledgement. It does not authenticate the reviewer, establish source freshness, certify
 safety, or recall previously shared copies. An authenticated publisher, remote revocation,
 hosted deletion, and signed attestations remain unimplemented.
+
+## Real-world validation setup
+
+Date: September 6, 2026
+
+The real-world validation preparation slice is implemented on `feat/real-world-validation-setup`.
+It does not contact external MCP servers, load environment-variable values, execute MCP tools, or
+call model providers. `scripts/prepare_validation.py` creates a fresh mode-700 workspace under
+the ignored `reports/validation/` directory with strict production and loopback policies, a
+review template, an allowlisted environment manifest, and a 14-day manual cleanup reminder.
+Existing workspaces are never overwritten. The manifest records preparation provenance only; it
+is not a signed attestation or a claim that a scan ran.
+
+The playbook in `docs/REAL_WORLD_VALIDATION.md` defines authorized target selection, a bounded
+two-scan discovery budget, strict exit-code interpretation, offline diff/export/history analysis,
+finding triage, and disclosure/cleanup boundaries. It explicitly treats public accessibility as
+insufficient permission, keeps unsupported transports as coverage gaps, and separates confirmed
+concerns from suspected false positives and unknowns. The review template requires an exact
+upstream revision and permission record while prohibiting tokens, headers, customer data, and
+unreviewed raw artifacts from issues or public pages.
+
+Validation of the setup itself passed in the complete local suite (393 tests), Ruff, strict MyPy,
+and the CI YAML checks. The offline setup smoke test uses committed fixtures only and asserts that
+no scan artifact is created. External target validation is intentionally pending the next work
+session and target-owner authorization. No pass percentage or security certification is claimed.

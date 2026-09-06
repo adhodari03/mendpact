@@ -28,6 +28,20 @@ jobs:
         run: python -m mypy src
       - name: Test
         run: python -m pytest --cov=mendpact --cov-report=term-missing
+      - name: Offline real-world validation setup smoke test
+        run: |
+          python scripts/prepare_validation.py ci-setup-only
+          git check-ignore reports/validation/ci-setup-only/manifest.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          workspace = Path("reports/validation/ci-setup-only")
+          manifest = json.loads((workspace / "manifest.json").read_text())
+          assert manifest["status"] == "not-run"
+          assert manifest["environment"]["working_tree_dirty"] is False
+          assert not list(workspace.glob("scan*.json"))
+          PY
       - name: Offline evidence export smoke test
         run: |
           mkdir -p reports
