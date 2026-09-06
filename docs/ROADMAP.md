@@ -79,11 +79,14 @@ Completed implementation is not equivalent to deployment or validation on custom
 
 ### Recommended implementation sequence
 
-1. Collect feedback on locally exported summaries using fixture or explicitly approved evidence.
+1. Run the [real-world validation playbook](REAL_WORLD_VALIDATION.md) on explicitly authorized,
+   independently developed targets. The offline setup is ready; external validation is pending.
+   Collect feedback on locally exported summaries using fixture or explicitly approved evidence.
 2. Exercise the local history and descriptive comparison workflow on approved real-world evidence;
    gather feedback before choosing hosted storage.
 3. Design authenticated projects, report access controls, deletion, and retention; request review
    before introducing hosted infrastructure or credential custody.
+   The local authenticated API design is deferred until validation informs that scope.
 4. Integrate the reviewed-package acknowledgement with an authenticated publisher. Define hosted
    expiry, deletion and revocation before introducing a public evidence index. Local unsigned
    receipts alone do not establish reviewer identity or provide remote access control.
