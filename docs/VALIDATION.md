@@ -344,3 +344,40 @@ the ignored `reports/` directory; no source or summary was published to GitHub P
 No credentials were loaded, model providers called, or MCP tools executed. Only local fixture
 discovery used networking. This validates export mechanics and basic evidence consistency, not
 report authenticity, a cryptographic attestation, production safety, or a hosted deployment.
+
+## Local run history validation
+
+Date: September 6, 2026
+
+The local history slice was implemented on `feat/local-run-history` after the evidence-export
+PR was merged. The complete local suite passed 329 tests, including 35 new history tests, with
+resource warnings treated as errors. Ruff, strict MyPy, CI YAML parsing, and diff whitespace
+validation passed. Focused statement coverage was 98% for the history storage/comparison module
+and 84% for its CLI (94% combined). These are local results; the added CI smoke step has not yet
+run on GitHub.
+
+Tests exercise exact-file deduplication without extending import age, sensitive-text omission,
+private-file permissions, source preservation, safe path rejection, read-only pagination,
+unknown/corrupt store rejection, concurrent duplicate imports into an initialized database,
+target/type mismatch rejection, policy/model/setup warnings, skipped/error-stage handling,
+source-time ordering, output overwrite protection, and preview/apply cleanup at the exact
+14-day import-age boundary. Network connections were blocked in an offline workflow test.
+
+A local CLI smoke imported the two committed contract-scan fixtures, reimported the first to
+verify deduplication, listed two entries, produced a versioned comparison JSON, and previewed
+cleanup. The freshly imported entries were not eligible for deletion. Their equal scan counts
+produced zero count deltas; this is explicitly not a claim that their contracts are identical.
+The SQLite database and comparison remain in an ignored local reports directory.
+SQLite sidecar ignore rules were also checked.
+
+The shared report loader and no-overwrite artifact writer were reused without changing the
+existing export command's interface. Review identified a numeric edge case: JSON exponents such
+as `1e999` can parse to infinity without using a literal `Infinity` token. The shared loader now
+rejects this form too, with an additional regression test. Test-owned SQLite connections were
+also closed explicitly to eliminate resource warnings.
+
+No model provider or MCP endpoint was contacted, no credential was loaded, no original report
+was deleted, and no data was published. Actual pruning was exercised only on test-owned temporary
+databases. History contains minimized local evidence, not encrypted storage or authenticated
+attestations; its comparisons are descriptive and do not replace reliability gates. The explicit
+14-day cleanup command is implemented, but no background cleanup or hosted service was enabled.

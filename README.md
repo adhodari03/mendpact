@@ -322,6 +322,34 @@ Existing output files are never overwritten. Export success is not a CI reliabil
 failed source report can be exported successfully while retaining its failed status. See the
 [evidence export guide](docs/EVIDENCE_EXPORT.md) for validation, privacy boundaries, and CI usage.
 
+## Local run history
+
+Keep a private local index of minimized evidence, then compare two imports without reconnecting
+to an MCP server or calling a model:
+
+```bash
+mkdir -p reports
+mendpact history add examples/contracts/baseline-scan.json
+mendpact history add examples/contracts/candidate-scan.json
+mendpact history list
+mendpact history compare 1 2 --output reports/history-comparison.json
+```
+
+Use the IDs printed by `history add`; `1` and `2` assume a fresh database. The default store is
+`reports/history.sqlite`. Reimporting identical source bytes returns the existing ID without
+resetting its age. History keeps minimized summaries and comparison fingerprints, not raw
+reports, prompts, arguments, or credentials. It remains private local data, not an encrypted or
+authenticated evidence store.
+
+Comparisons reject different targets or report types, flag changed policies and model identities,
+and withhold numeric deltas for missing/incomplete stages or changed behavior setups and contract
+baselines. They are descriptive, not CI regression verdicts. Keep `guard` or `compare-models` as
+the reliability gate.
+
+Run `mendpact history prune` to preview entries imported at least 14 days ago. Add `--apply` to
+delete eligible rows; original report files remain unchanged. Cleanup is explicit, not scheduled.
+See the [local history guide](docs/HISTORY.md) for storage, retention, and comparison limits.
+
 ## GitHub Action
 
 MendPact can run as a composite GitHub Action. Scan mode remains the default for backward

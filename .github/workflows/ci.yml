@@ -35,6 +35,26 @@ jobs:
             --output reports/scan-evidence.html
           mendpact export-report examples/model-comparison/reference-behavior.json \
             --format json --output reports/behavior-evidence.json
+      - name: Offline local history smoke test
+        run: |
+          mendpact history add examples/contracts/baseline-scan.json
+          mendpact history add examples/contracts/candidate-scan.json
+          mendpact history add examples/contracts/baseline-scan.json
+          mendpact history list
+          mendpact history compare 1 2 --output reports/history-comparison.json
+          mendpact history prune
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from mendpact.history import list_history
+
+          entries = list_history(Path("reports/history.sqlite"))
+          assert len(entries) == 2
+          report = json.loads(Path("reports/history-comparison.json").read_text())
+          assert report["schema_version"] == "mendpact.history-comparison.v1"
+          assert report["stages"][0]["comparable"] is True
+          assert "target" not in report and "context" not in report
+          PY
       - name: MCP contract diff smoke test
         run: >-
           mendpact diff
@@ -307,6 +327,7 @@ jobs:
             reports/behavior-evidence.json
             reports/failed-guard-evidence.html
             reports/failed-guard-evidence.json
+            reports/history-comparison.json
           retention-days: 14
           if-no-files-found: ignore
       - name: Upload strict policy report

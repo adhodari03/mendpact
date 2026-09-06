@@ -53,6 +53,7 @@ from mendpact.drivers.openai import (
 from mendpact.drivers.replay import ReplayDriver
 from mendpact.evidence import EvidenceExportError, export_evidence
 from mendpact.guard import guard_mcp_url
+from mendpact.history_cli import app as history_app
 from mendpact.model_comparison import compare_behavior_reports, load_behavior_report
 from mendpact.policy import (
     PolicyConfigurationError,
@@ -107,6 +108,7 @@ baseline_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(baseline_app, name="baseline")
+app.add_typer(history_app, name="history")
 
 
 class BehaviorDriver(StrEnum):

@@ -67,6 +67,8 @@ Completed implementation is not equivalent to deployment or validation on custom
 
 - [x] offline privacy-minimized HTML and versioned JSON evidence export for scan, behavior, and guard
 - [x] explicit thresholds, skipped stages, source-file digests, and unsigned-evidence disclaimers
+- [x] local minimized run-history store with deduplication and bounded listing
+- [x] descriptive history comparison with target/setup checks and explicit 14-day cleanup
 - [ ] review-and-publish workflow for versioned public evidence
 - [ ] projects, authentication, and encrypted bring-your-own-key storage
 - [ ] scheduled scans and GitHub checks
@@ -77,7 +79,8 @@ Completed implementation is not equivalent to deployment or validation on custom
 ### Recommended implementation sequence
 
 1. Collect feedback on locally exported summaries using fixture or explicitly approved evidence.
-2. Add a local run-history index and comparison view before choosing hosted storage.
+2. Exercise the local history and descriptive comparison workflow on approved real-world evidence;
+   gather feedback before choosing hosted storage.
 3. Design authenticated projects, report access controls, deletion, and retention; request review
    before introducing hosted infrastructure or credential custody.
 4. Build explicit publication consent and only then introduce a public evidence index.
