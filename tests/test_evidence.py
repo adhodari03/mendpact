@@ -177,6 +177,7 @@ def test_requires_explicit_source_header(tmp_path: Path, scan: ScanReport, field
 @pytest.mark.parametrize("payload", [
     "[]", "{", "null", '{"schema_version": "secret-unknown"}',
     '{"status":"passed","status":"failed"}', '{"a": NaN}', '{"a": Infinity}',
+    '{"a": 1e999}',
 ])
 def test_invalid_and_ambiguous_json_rejected(tmp_path: Path, payload: str) -> None:
     source = tmp_path / "input.json"

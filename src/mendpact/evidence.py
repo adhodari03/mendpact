@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import stat
 import tempfile
@@ -192,7 +193,22 @@ def _reject_constant(value: str) -> None:
     raise EvidenceExportError("Non-finite JSON numbers are not supported.")
 
 
+def _finite_float(value: str) -> float:
+    number = float(value)
+    if not math.isfinite(number):
+        raise EvidenceExportError("Non-finite JSON numbers are not supported.")
+    return number
+
+
 def load_evidence_summary(source: Path) -> EvidenceSummary:
+    """Load a minimized summary while keeping the source report transient."""
+
+    return load_evidence_source(source)[0]
+
+
+def load_evidence_source(
+    source: Path,
+) -> tuple[EvidenceSummary, ScanReport | BehaviorReport | GuardReport]:
     """Read a bounded regular file once; never resolve target URLs or load secrets."""
 
     try:
@@ -202,7 +218,10 @@ def load_evidence_summary(source: Path) -> EvidenceSummary:
             raw = stream.read(MAX_REPORT_BYTES + 1)
         if len(raw) > MAX_REPORT_BYTES:
             raise EvidenceExportError("Source report exceeds the 10 MiB export limit.")
-        payload = json.loads(raw, object_pairs_hook=_unique_object, parse_constant=_reject_constant)
+        payload = json.loads(
+            raw, object_pairs_hook=_unique_object, parse_constant=_reject_constant,
+            parse_float=_finite_float,
+        )
         _assert(isinstance(payload, dict))
         _assert(all(key in payload for key in ("schema_version", "generated_at", "status")))
         schema = payload["schema_version"]
@@ -220,13 +239,14 @@ def load_evidence_summary(source: Path) -> EvidenceSummary:
             sections = _guard_sections(report)
         else:
             raise EvidenceExportError("Supported sources are scan.v1, behavior.v1 and guard.v1.")
-        return EvidenceSummary(
+        summary = EvidenceSummary(
             source_schema=schema,
             source_sha256=sha256(raw).hexdigest(),
             source_generated_at=report.generated_at,
             recorded_status=report.status,
             sections=sections,
         )
+        return summary, report
     except EvidenceExportError:
         raise
     except (OSError, ValueError, ValidationError, RecursionError) as exc:
@@ -293,6 +313,12 @@ def export_evidence(source: Path, destination: Path, *, format: Literal["html", 
     content = (
         render_evidence_html(summary) if format == "html" else summary.model_dump_json(indent=2)
     )
+    write_new_evidence_file(destination, content)
+
+
+def write_new_evidence_file(destination: Path, content: str) -> None:
+    """Write a completed evidence artifact atomically without replacing existing files."""
+
     parent = destination.absolute().parent
     if any(path.is_symlink() for path in (parent, *parent.parents)):
         raise EvidenceExportError("Output directory must not contain symlinks.")
