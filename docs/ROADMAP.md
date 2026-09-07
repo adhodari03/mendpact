@@ -80,8 +80,11 @@ Completed implementation is not equivalent to deployment or validation on custom
 ### Recommended implementation sequence
 
 1. Run the [real-world validation playbook](REAL_WORLD_VALIDATION.md) on explicitly authorized,
-   independently developed targets. The offline setup is ready; external validation is pending.
+   independently developed targets. The offline setup and first local third-party runs are done;
+   hosted/external validation remains pending explicit owner permission.
    Collect feedback on locally exported summaries using fixture or explicitly approved evidence.
+   The [first validation set](REAL_WORLD_RESULTS.md) covers two local third-party implementations;
+   broader target and authenticated-deployment coverage remains pending.
 2. Exercise the local history and descriptive comparison workflow on approved real-world evidence;
    gather feedback before choosing hosted storage.
 3. Design authenticated projects, report access controls, deletion, and retention; request review
