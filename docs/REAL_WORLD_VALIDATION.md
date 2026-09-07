@@ -40,6 +40,9 @@ hashes, and a 14-day manual cleanup reminder. It does not read environment-varia
 contact servers, or assert that tests ran. Existing run directories are never reused. A partial
 directory after an I/O failure must be inspected manually; no recursive deletion is attempted.
 Use a new label for each target/revision or repeated experiment. `reports/` is already ignored.
+Preparation fails before creating the workspace when installed MendPact package metadata is
+missing, does not match `pyproject.toml`, or resolves outside this source checkout; reinstall the
+editable project and use a fresh label.
 
 The manifest is preparation provenance, not a signed attestation or dependency lockfile.
 Prepare again after committing/pulling if you need provenance for that exact clean revision.
