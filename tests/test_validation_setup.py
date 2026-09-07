@@ -4,6 +4,7 @@ import socket
 from datetime import datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -102,12 +103,50 @@ def test_environment_is_allowlisted(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         setup, "git_value", lambda _, *args: "fixture" if args[0] == "rev-parse" else ""
     )
+    monkeypatch.setattr(setup, "version", lambda name: "0.2.0" if name == "mendpact" else "fixture")
     monkeypatch.setenv("MENDPACT_ACCESS_TOKEN", "SECRET-TOKEN")
     record = setup.environment_record(ROOT)
     assert set(record) == {"revision", "working_tree_dirty", "python", "packages"}
     assert record["working_tree_dirty"] is False
-    assert set(record["packages"]) == set(setup.PACKAGES)
+    assert set(record["packages"]) == {"mendpact", *setup.PACKAGES}
     assert "SECRET-TOKEN" not in json.dumps(record)
+
+
+@pytest.mark.parametrize("installed", ["0.1.0", None])
+def test_environment_rejects_stale_or_missing_install(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    installed: str | None,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text('[project]\nversion = "0.2.0"\n')
+    monkeypatch.setattr(setup, "git_value", lambda *_: "fixture")
+
+    def installed_version(name: str) -> str:
+        if name == "mendpact":
+            if installed is None:
+                raise setup.PackageNotFoundError(name)
+            return installed
+        return "fixture"
+
+    monkeypatch.setattr(setup, "version", installed_version)
+    with pytest.raises(ValueError, match=r"installed|Installed"):
+        setup.environment_record(tmp_path)
+
+
+def test_environment_rejects_same_version_from_another_checkout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text('[project]\nversion = "0.2.0"\n')
+    monkeypatch.setattr(setup, "version", lambda _: "0.2.0")
+    monkeypatch.setattr(
+        setup,
+        "find_spec",
+        lambda _: SimpleNamespace(origin="/another/checkout/mendpact/__init__.py"),
+    )
+
+    with pytest.raises(ValueError, match="source checkout"):
+        setup.environment_record(tmp_path)
 
 
 def test_documented_offline_analysis_with_committed_fixtures(

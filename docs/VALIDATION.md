@@ -445,3 +445,43 @@ Validation of the setup itself passed in the complete local suite (393 tests), R
 and the CI YAML checks. The offline setup smoke test uses committed fixtures only and asserts that
 no scan artifact is created. External target validation is intentionally pending the next work
 session and target-owner authorization. No pass percentage or security certification is claimed.
+
+## First third-party MCP validation set
+
+Date: September 7, 2026
+
+Two independently developed, locally run Streamable HTTP implementations were scanned twice each
+under the strict local policy. Fastly MCP 2.1.5 at commit `905d1485` negotiated MCP `2026-07-28`
+and exposed three tools. The ferrants TypeScript starter 0.1.0 at commit `719131a8` negotiated MCP
+`2024-11-05` and exposed three tools. Both catalogs were unchanged across their repeat scan and
+both offline contract diffs contained zero changes. These short unchanged runs establish only
+immediate catalog repeatability. The reviewed IMF MCP 0.4.1 target was not started because the
+local Docker daemon was unavailable.
+
+The released scanner passed both runnable targets at the high threshold with only the expected
+medium plaintext-loopback warning. Review found that Fastly's intentional `execute(code)` surface
+was a MendPact false negative: its public source, discovered description, and input schema all
+advertised JavaScript execution with a pre-authenticated API client. New critical rule
+`MP-MCP-007` requires an explicit execution-oriented tool name plus a code/command/script field.
+A negative test keeps `execute_query(query_id)` clear. Offline re-evaluation of the saved Fastly
+graph now reports the rule without making a third network scan or invoking the tool.
+
+The legacy starter's negotiated `2024-11-05` revision was already visible in its report but not
+identified as compatibility context. New low rule `MP-MCP-008` reports that exact pre-Streamable
+HTTP revision without failing the high threshold. Tests keep current `2026-07-28` graphs clear.
+This is not classified as a vulnerability; discovery succeeded through the intended handshake
+fallback.
+
+Real execution also exposed a provenance weakness: a stale editable install could make the
+workspace manifest report MendPact 0.1.0 while the source and CLI were 0.2.0. Workspace preparation
+now compares installed distribution metadata with `pyproject.toml` and refuses missing or stale
+metadata before creating a run directory. After a clean editable reinstall, the manifest correctly
+recorded 0.2.0. Fastly's own `npm ci` also rejected its mismatched package and lock files; this was
+recorded as upstream onboarding evidence, not a MendPact scan finding.
+
+The complete local suite passed 400 tests with resource warnings treated as errors. Ruff, strict
+MyPy, diff whitespace checks, and static website validation passed. No MCP tool, model provider,
+production API, hosted third-party MCP endpoint, or credential was used. Both servers ran on
+loopback in empty environments and were stopped after the bounded scans. Raw reports, local review
+notes, server logs, and databases remain ignored and subject to the 14-day manual cleanup reminder.
+The sanitized matrix and limitations are documented in `docs/REAL_WORLD_RESULTS.md`.

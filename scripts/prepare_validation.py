@@ -7,14 +7,16 @@ import json
 import re
 import stat
 import subprocess
+import tomllib
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from importlib.metadata import PackageNotFoundError, version
+from importlib.util import find_spec
 from pathlib import Path
 from platform import python_version
 
 ROOT = Path(__file__).resolve().parents[1]
-PACKAGES = ("mendpact", "mcp", "httpx2", "pydantic", "typer", "rich")
+PACKAGES = ("mcp", "httpx2", "pydantic", "typer", "rich")
 TEMPLATES = {
     "production.toml": "examples/policies/production.toml",
     "local-strict.toml": "examples/policies/local-strict.toml",
@@ -35,7 +37,30 @@ def git_value(root: Path, *arguments: str) -> str:
 
 def environment_record(root: Path) -> dict[str, object]:
     """Allowlist provenance; never record environment variables, remotes, or user identity."""
-    packages: dict[str, str] = {}
+    try:
+        project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+        declared_version = project["version"]
+    except (KeyError, TypeError) as exc:
+        raise ValueError("pyproject.toml does not declare project.version") from exc
+    if not isinstance(declared_version, str) or not declared_version:
+        raise ValueError("pyproject.toml project.version must be a non-empty string")
+    try:
+        installed_version = version("mendpact")
+    except PackageNotFoundError as exc:
+        raise ValueError("MendPact is not installed in the active Python environment") from exc
+    if installed_version != declared_version:
+        raise ValueError(
+            "Installed MendPact metadata does not match pyproject.toml; reinstall the project"
+        )
+    specification = find_spec("mendpact")
+    expected_source = (root / "src" / "mendpact").resolve()
+    if (
+        specification is None
+        or specification.origin is None
+        or not Path(specification.origin).resolve().is_relative_to(expected_source)
+    ):
+        raise ValueError("Active MendPact installation does not use this source checkout")
+    packages: dict[str, str] = {"mendpact": installed_version}
     for name in PACKAGES:
         try:
             packages[name] = version(name)
@@ -102,7 +127,8 @@ def main() -> int:
     except (OSError, ValueError, subprocess.SubprocessError):
         parser.exit(
             2,
-            "Could not prepare workspace. Check label, existing paths, and Git checkout. "
+            "Could not prepare workspace. Activate the project environment and install it with "
+            "`python -m pip install -e '.[dev]'`, then check the label, paths, and Git checkout. "
             "Existing files were not replaced; inspect any partial new directory.\n",
         )
     print(f"Prepared {destination}\nNo validation has run. Follow docs/REAL_WORLD_VALIDATION.md.")
