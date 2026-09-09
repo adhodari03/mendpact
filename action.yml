@@ -1,5 +1,5 @@
 name: MendPact MCP Reliability
-description: Audit, scan, evaluate, guard, compare models, or calibrate AI grading for MCP.
+description: Audit, scan, recheck, evaluate, guard, compare models, or calibrate AI grading for MCP.
 author: MendPact
 branding:
   icon: shield
@@ -7,11 +7,15 @@ branding:
 
 inputs:
   mode:
-    description: Run auth, scan, evaluate, guard, compare-models, or calibrate-grader mode.
+    description: Run auth, scan, recheck, evaluate, guard, compare-models, or calibrate-grader mode.
     required: false
     default: scan
   target:
     description: Remote Streamable HTTP MCP endpoint for auth, scan, evaluate, and guard modes.
+    required: false
+    default: ""
+  source-report:
+    description: Original complete scan JSON required by offline recheck mode.
     required: false
     default: ""
   policy:
@@ -125,7 +129,7 @@ inputs:
 
 outputs:
   report:
-    description: Path to the generated scan, evaluation, guard, comparison, or calibration report.
+    description: Path to the generated scan, recheck, evaluation, guard, comparison, or calibration report.
     value: ${{ steps.metadata.outputs.report }}
   candidate-scan:
     description: Candidate scan path when `save-scan` is configured.
@@ -173,6 +177,7 @@ runs:
       env:
         MENDPACT_MODE: ${{ inputs.mode }}
         MENDPACT_TARGET: ${{ inputs.target }}
+        MENDPACT_SOURCE_REPORT: ${{ inputs.source-report }}
         MENDPACT_POLICY: ${{ inputs.policy }}
         MENDPACT_AUTH_TOKEN_ENV: ${{ inputs.auth-token-env }}
         MENDPACT_FAIL_ON: ${{ inputs.fail-on }}

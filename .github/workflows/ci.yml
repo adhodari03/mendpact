@@ -49,6 +49,36 @@ jobs:
             --output reports/scan-evidence.html
           mendpact export-report examples/model-comparison/reference-behavior.json \
             --format json --output reports/behavior-evidence.json
+      - name: Offline scan recheck Action smoke test
+        id: mendpact-recheck
+        uses: ./
+        with:
+          mode: recheck
+          source-report: examples/contracts/candidate-scan.json
+          policy: examples/policies/local-reliability.toml
+          output: rechecked-scan-report.json
+      - name: Verify offline scan recheck provenance
+        shell: bash
+        env:
+          MENDPACT_REPORT: ${{ steps.mendpact-recheck.outputs.report }}
+          MENDPACT_MODE: ${{ steps.mendpact-recheck.outputs.mode }}
+        run: |
+          test "${MENDPACT_REPORT}" = "rechecked-scan-report.json"
+          test "${MENDPACT_MODE}" = "recheck"
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          source = Path("examples/contracts/candidate-scan.json")
+          report = json.loads(Path("rechecked-scan-report.json").read_text())
+          assert report["schema_version"] == "mendpact.scan.v1"
+          assert report["status"] == "passed"
+          assert report["recheck"]["source_sha256"] == hashlib.sha256(
+              source.read_bytes()
+          ).hexdigest()
+          assert report["recheck"]["authorization_refreshed"] is False
+          PY
       - name: Offline local history smoke test
         run: |
           mendpact history add examples/contracts/baseline-scan.json
@@ -236,7 +266,7 @@ jobs:
           from pathlib import Path
 
           report = json.loads(Path("reports/failed-guard-evidence.json").read_text())
-          assert report["schema_version"] == "mendpact.evidence.v1"
+          assert report["schema_version"] == "mendpact.evidence.v2"
           assert report["recorded_status"] == "failed"
           assert "target" not in report
           assert report["sections"][0]["metrics"]["Fails on severity"] == "high"

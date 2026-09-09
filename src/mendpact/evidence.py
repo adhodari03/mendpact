@@ -58,7 +58,9 @@ class EvidenceSummary(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["mendpact.evidence.v1"] = "mendpact.evidence.v1"
+    schema_version: Literal["mendpact.evidence.v1", "mendpact.evidence.v2"] = (
+        "mendpact.evidence.v1"
+    )
     source_schema: Literal["mendpact.scan.v1", "mendpact.behavior.v1", "mendpact.guard.v1"]
     source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     source_generated_at: datetime
@@ -85,6 +87,11 @@ def _scan_section(report: ScanReport) -> EvidenceSection:
         )
         _assert(report.status == (ScanStatus.FAILED if failed else ScanStatus.PASSED))
     metrics: dict[str, int | str] = {
+        "Evidence mode": (
+            "Offline deterministic recheck"
+            if report.recheck is not None
+            else "Live metadata capture"
+        ),
         "Fails on severity": report.failure_threshold.value,
         "Findings": len(report.findings),
         "Waived findings": sum(f.waiver is not None for f in report.findings),
@@ -240,6 +247,11 @@ def load_evidence_source(
         else:
             raise EvidenceExportError("Supported sources are scan.v1, behavior.v1 and guard.v1.")
         summary = EvidenceSummary(
+            schema_version=(
+                "mendpact.evidence.v2"
+                if schema in {"mendpact.scan.v1", "mendpact.guard.v1"}
+                else "mendpact.evidence.v1"
+            ),
             source_schema=schema,
             source_sha256=sha256(raw).hexdigest(),
             source_generated_at=report.generated_at,

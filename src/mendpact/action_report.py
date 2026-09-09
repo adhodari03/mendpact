@@ -119,6 +119,33 @@ def _annotation_for_item(
 def _scan_sections(scan: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
     lines: list[str] = []
     annotations: list[Annotation] = []
+    recheck = scan.get("recheck")
+    if isinstance(recheck, dict):
+        lines.extend(
+            [
+                "### Offline recheck provenance",
+                "",
+                *_table(
+                    [
+                        "Source SHA-256",
+                        "Source status",
+                        "Rechecked",
+                        "MendPact",
+                        "Authorization refreshed",
+                    ],
+                    [
+                        [
+                            recheck.get("source_sha256"),
+                            _status(recheck.get("source_status")),
+                            recheck.get("rechecked_at"),
+                            recheck.get("mendpact_version"),
+                            "No",
+                        ]
+                    ],
+                ),
+                "",
+            ]
+        )
     authorization = scan.get("authorization")
     if isinstance(authorization, dict):
         lines.extend(
@@ -810,6 +837,8 @@ def render_action_report(payload: dict[str, Any], report_path: str) -> ActionRep
         "mendpact.scan.v1": "Scan",
         "mendpact.semantic-calibration.v1": "Semantic Calibration",
     }.get(str(schema), "Report")
+    if schema == "mendpact.scan.v1" and isinstance(payload.get("recheck"), dict):
+        mode = "Scan Recheck"
     lines = [
         f"## MendPact {mode}",
         "",

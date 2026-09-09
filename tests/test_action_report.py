@@ -59,6 +59,25 @@ def test_renders_scan_summary_without_leaking_target_secrets() -> None:
     assert rendered.annotations[1].level == "warning"
 
 
+def test_renders_offline_recheck_provenance() -> None:
+    payload = _scan_payload()
+    payload["recheck"] = {
+        "source_sha256": "a" * 64,
+        "source_status": "passed",
+        "rechecked_at": "2026-09-08T12:00:00Z",
+        "mendpact_version": "0.2.0",
+        "authorization_refreshed": False,
+    }
+
+    rendered = render_action_report(payload, "recheck.json")
+
+    assert "## MendPact Scan Recheck" in rendered.summary
+    assert "### Offline recheck provenance" in rendered.summary
+    assert "a" * 64 in rendered.summary
+    assert "Authorization refreshed" in rendered.summary
+    assert "No" in rendered.summary
+
+
 def test_renders_guard_stages_contract_changes_and_failed_trials() -> None:
     payload: dict[str, object] = {
         "schema_version": "mendpact.guard.v1",

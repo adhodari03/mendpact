@@ -20,7 +20,7 @@ The command produces a deterministic ZIP with exactly these files:
 | File | Contents |
 | --- | --- |
 | `index.html` | Script-free, self-contained minimized report |
-| `summary.json` | `mendpact.evidence.v1` aggregate evidence |
+| `summary.json` | Versioned, aggregate MendPact evidence |
 | `manifest.json` | `mendpact.sharing-package.v1`, source digest, and artifact digests |
 
 The source report, target URL, raw errors, arguments, prompts, provider responses, and credentials

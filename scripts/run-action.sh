@@ -3,6 +3,7 @@ set -euo pipefail
 
 mode="${MENDPACT_MODE:-scan}"
 target="${MENDPACT_TARGET:-}"
+source_report="${MENDPACT_SOURCE_REPORT:-}"
 output="${MENDPACT_OUTPUT:-mendpact-report.json}"
 policy="${MENDPACT_POLICY:-}"
 auth_token_env="${MENDPACT_AUTH_TOKEN_ENV:-}"
@@ -61,6 +62,10 @@ if [[ "${mode}" == "auth" && -n "${auth_token_env}" ]]; then
   echo "MendPact Action: auth mode never loads a token; remove auth-token-env." >&2
   exit 2
 fi
+if [[ "${mode}" != "recheck" && -n "${source_report}" ]]; then
+  echo "MendPact Action: source-report can only be used in recheck mode." >&2
+  exit 2
+fi
 
 case "${mode}" in
   auth)
@@ -85,6 +90,31 @@ case "${mode}" in
       mendpact scan "${target}"
     )
     if [[ -z "${policy}" ]]; then
+      command_args+=(--fail-on "${MENDPACT_FAIL_ON:-high}")
+    fi
+    command_args+=(--output "${output}")
+    ;;
+  recheck)
+    if [[ -z "${source_report}" ]]; then
+      echo "MendPact Action: source-report is required in recheck mode." >&2
+      exit 2
+    fi
+    if [[ -n "${target}" || -n "${auth_token_env}" || \
+       "${allow_private}" == "true" || "${allow_insecure_http}" == "true" ]]; then
+      echo "MendPact Action: recheck mode is offline and does not accept target, authentication, or target allowance inputs." >&2
+      exit 2
+    fi
+    if [[ -n "${MENDPACT_BASELINE:-}" || -n "${MENDPACT_SCENARIO:-}" || \
+       -n "${MENDPACT_REPLAY:-}" || -n "${MENDPACT_SAVE_SCAN:-}" || \
+       -n "${MENDPACT_REFERENCE_REPORT:-}" || -n "${MENDPACT_CANDIDATE_REPORT:-}" || \
+       -n "${MENDPACT_SEMANTIC_LABELS:-}" ]]; then
+      echo "MendPact Action: recheck mode accepts only source-report, output, policy, and fail-on inputs." >&2
+      exit 2
+    fi
+    command_args=(mendpact recheck "${source_report}")
+    if [[ -n "${policy}" ]]; then
+      command_args+=(--policy "${policy}")
+    else
       command_args+=(--fail-on "${MENDPACT_FAIL_ON:-high}")
     fi
     command_args+=(--output "${output}")
@@ -257,7 +287,7 @@ case "${mode}" in
     command_args+=(--output "${output}")
     ;;
   *)
-    echo "MendPact Action: mode must be 'auth', 'scan', 'evaluate', 'guard', 'compare-models', or 'calibrate-grader'." >&2
+    echo "MendPact Action: mode must be 'auth', 'scan', 'recheck', 'evaluate', 'guard', 'compare-models', or 'calibrate-grader'." >&2
     exit 2
     ;;
 esac
