@@ -266,7 +266,7 @@ jobs:
           from pathlib import Path
 
           report = json.loads(Path("reports/failed-guard-evidence.json").read_text())
-          assert report["schema_version"] == "mendpact.evidence.v1"
+          assert report["schema_version"] == "mendpact.evidence.v2"
           assert report["recorded_status"] == "failed"
           assert "target" not in report
           assert report["sections"][0]["metrics"]["Fails on severity"] == "high"
