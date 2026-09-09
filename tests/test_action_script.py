@@ -97,68 +97,6 @@ def test_action_script_preserves_backward_compatible_scan_mode(tmp_path: Path) -
     ]
 
 
-def test_action_script_builds_offline_recheck(tmp_path: Path) -> None:
-    result = _run_action_script(
-        tmp_path,
-        MENDPACT_MODE="recheck",
-        MENDPACT_SOURCE_REPORT="reports/original scan.json",
-        MENDPACT_FAIL_ON="medium",
-        MENDPACT_OUTPUT="reports/current rules.json",
-    )
-
-    assert result.returncode == 0
-    assert _arguments(tmp_path) == [
-        "recheck",
-        "reports/original scan.json",
-        "--fail-on",
-        "medium",
-        "--output",
-        "reports/current rules.json",
-    ]
-
-
-def test_action_script_lets_policy_own_recheck_threshold(tmp_path: Path) -> None:
-    result = _run_action_script(
-        tmp_path,
-        MENDPACT_MODE="recheck",
-        MENDPACT_SOURCE_REPORT="source.json",
-        MENDPACT_POLICY="mendpact.toml",
-        MENDPACT_OUTPUT="rechecked.json",
-    )
-
-    assert result.returncode == 0
-    assert _arguments(tmp_path) == [
-        "recheck",
-        "source.json",
-        "--policy",
-        "mendpact.toml",
-        "--output",
-        "rechecked.json",
-    ]
-
-
-def test_action_script_validates_offline_recheck_inputs(tmp_path: Path) -> None:
-    missing_source = _run_action_script(tmp_path, MENDPACT_MODE="recheck")
-    live_target = _run_action_script(
-        tmp_path,
-        MENDPACT_MODE="recheck",
-        MENDPACT_SOURCE_REPORT="source.json",
-        MENDPACT_TARGET="https://example.com/mcp",
-    )
-    source_in_scan = _run_action_script(
-        tmp_path,
-        MENDPACT_SOURCE_REPORT="source.json",
-        MENDPACT_TARGET="https://example.com/mcp",
-    )
-
-    assert missing_source.returncode == 2
-    assert "source-report is required" in missing_source.stderr
-    assert live_target.returncode == 2
-    assert "recheck mode is offline" in live_target.stderr
-    assert source_in_scan.returncode == 2
-    assert "source-report can only be used" in source_in_scan.stderr
-
-
 def test_action_installer_selects_only_requested_provider_extra(tmp_path: Path) -> None:
     for driver in ("openai", "anthropic", "gemini"):
         result, arguments = _run_install_script(
@@ -538,8 +476,8 @@ def test_action_script_rejects_unknown_mode_and_boolean(tmp_path: Path) -> None:
 
     assert unknown_mode.returncode == 2
     assert (
-        "mode must be 'auth', 'scan', 'recheck', 'evaluate', 'guard', "
-        "'compare-models', or 'calibrate-grader'"
+        "mode must be 'auth', 'scan', 'evaluate', 'guard', 'compare-models', or "
+        "'calibrate-grader'"
     ) in (
         unknown_mode.stderr
     )

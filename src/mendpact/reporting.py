@@ -85,12 +85,6 @@ def render_baseline_inspection(
     console.print(f"Target: {report.target}")
     console.print(f"Captured: {report.generated_at.isoformat()}")
     console.print(f"Scan status: {report.status.value.upper()}")
-    if report.recheck:
-        console.print(
-            "Evidence mode: offline deterministic recheck | "
-            f"Rechecked: {report.recheck.rechecked_at.isoformat()}"
-        )
-        console.print("Authorization evidence refreshed: no")
     console.print(f"Canonical SHA-256: {inspection.canonical_sha256}")
     if report.graph:
         console.print(
@@ -111,20 +105,9 @@ def render_report(report: ScanReport, console: Console) -> None:
         ScanStatus.FAILED: "bold red",
         ScanStatus.ERROR: "bold red",
     }[report.status]
-    label = "scan recheck" if report.recheck else "scan"
-    console.print(f"MendPact {label}: [{status_style}]{report.status.value.upper()}[/]")
+    console.print(f"MendPact scan: [{status_style}]{report.status.value.upper()}[/]")
     console.print(f"Scan ID: {report.scan_id}")
     console.print(f"Target: {report.target}")
-    if report.recheck:
-        console.print(
-            "Evidence mode: offline deterministic recheck | "
-            f"Source SHA-256: {report.recheck.source_sha256}"
-        )
-        console.print(
-            f"Rechecked: {report.recheck.rechecked_at.isoformat()} | "
-            f"MendPact: {report.recheck.mendpact_version} | "
-            "Authorization evidence refreshed: no"
-        )
     if report.policy:
         console.print(
             f"Policy: {report.policy.name} ({report.policy.profile.value}) | "

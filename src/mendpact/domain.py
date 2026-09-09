@@ -195,18 +195,6 @@ class OAuthMetadataEvidence(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-class ScanRecheckEvidence(BaseModel):
-    """Provenance for deterministic rules rerun against a saved capability graph."""
-
-    schema_version: Literal["mendpact.scan-recheck.v1"] = "mendpact.scan-recheck.v1"
-    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    rechecked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    mendpact_version: str = Field(min_length=1)
-    source_status: ScanStatus
-    preserved_authorization_finding_count: int = Field(ge=0)
-    authorization_refreshed: Literal[False] = False
-
-
 class ScanReport(BaseModel):
     schema_version: str = "mendpact.scan.v1"
     scan_id: str = Field(default_factory=lambda: str(uuid4()))
@@ -217,7 +205,6 @@ class ScanReport(BaseModel):
     policy: PolicySnapshot | None = None
     graph: CapabilityGraph | None = None
     authorization: OAuthMetadataEvidence | None = None
-    recheck: ScanRecheckEvidence | None = None
     findings: list[Finding] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     summary: ScanSummary | None = None

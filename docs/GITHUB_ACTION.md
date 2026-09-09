@@ -19,10 +19,6 @@ contract changes, compatibility regressions, and report errors. These presentati
 change MendPact's configured pass/fail thresholds. The JSON report remains the complete,
 machine-readable source of truth.
 
-Offline scan rechecks use `mode: recheck` with `source-report`. This mode reapplies current
-deterministic rules to a saved capability graph and labels the derived report with its exact source
-digest and freshness boundary. See the [offline recheck guide](RECHECK.md).
-
 The immutable `v0.1.0` tag predates PR-native summaries. Use `v0.2.0` or a later release for this
 feedback.
 
@@ -189,49 +185,6 @@ workflow to choose retention, permissions, and naming policy.
 `save-scan` is a candidate artifact, not an automatically trusted baseline. Download it, run
 `mendpact baseline inspect`, review its target, scan ID, status, capabilities, and digest, then use
 `mendpact baseline promote` in a separate change. See [contract baseline lifecycle](BASELINES.md).
-
-## Offline scan recheck mode
-
-Re-evaluate a committed or downloaded complete scan after MendPact rules change, without accessing
-the MCP target or loading credentials:
-
-```yaml
-name: Recheck saved MCP evidence
-
-on:
-  pull_request:
-
-permissions:
-  contents: read
-
-jobs:
-  recheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-      - id: mendpact-recheck
-        uses: adhodari03/mendpact@main
-        with:
-          mode: recheck
-          source-report: mendpact/baselines/baseline-scan.json
-          policy: mendpact.toml
-          output: mendpact-rechecked-scan.json
-      - if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: mendpact-rechecked-scan
-          path: mendpact-rechecked-scan.json
-          if-no-files-found: ignore
-          retention-days: 14
-```
-
-Use `main` only while reviewing an unreleased feature; pin the resulting release tag or full commit
-SHA afterward. The Action rejects target, authentication, and target-network allowance inputs in
-this mode. It preserves unrefreshed authorization findings and cannot prove that the saved graph
-still matches the deployed endpoint.
 
 ## Bounded model evaluation mode
 

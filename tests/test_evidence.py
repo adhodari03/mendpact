@@ -310,7 +310,7 @@ def test_cli_exports_failed_evidence_successfully(
     assert SECRET not in output.read_text()
     if format == "json":
         payload = json.loads(output.read_text())
-        assert payload["schema_version"] == "mendpact.evidence.v2"
+        assert payload["schema_version"] == "mendpact.evidence.v1"
         assert payload["recorded_status"] == "failed"
 
 

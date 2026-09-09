@@ -485,31 +485,3 @@ production API, hosted third-party MCP endpoint, or credential was used. Both se
 loopback in empty environments and were stopped after the bounded scans. Raw reports, local review
 notes, server logs, and databases remain ignored and subject to the 14-day manual cleanup reminder.
 The sanitized matrix and limitations are documented in `docs/REAL_WORLD_RESULTS.md`.
-
-## Offline current-rule scan recheck validation
-
-Date: September 8, 2026
-
-The recheck slice was implemented on `feat/offline-scan-recheck`. The complete local suite passed
-418 tests with warnings treated as errors. Ruff, strict MyPy across 40 source files, Bash syntax
-checks, Action/CI YAML parsing, and diff whitespace validation passed. The new local `uses: ./`
-GitHub Action smoke step is committed for hosted CI but has not yet run on GitHub.
-
-Tests cover replacement of stale deterministic findings, preservation and explicit non-refresh of
-authorization findings, exact source-byte hashing, original capture identity, current thresholds,
-active exact waivers, complete-scan validation, one-level provenance, safe error text, atomic
-no-overwrite output, CLI exit codes, Action argument quoting, incompatible Action inputs, GitHub
-summary labeling, and minimized evidence-mode labeling. A socket-denied engine test confirms that
-the recheck path does not initiate network access. A compatibility test keeps existing
-`mendpact.evidence.v1` scan packages readable, while new scan and guard summaries use v2 to require
-an explicit live-capture or offline-recheck label.
-
-A local CLI smoke rechecked `examples/contracts/candidate-scan.json` with the committed local
-reliability policy. It produced a passing `mendpact.scan.v1` report with the exact original-file
-SHA-256, installed MendPact version, recheck timestamp, original scan ID, and
-`authorization_refreshed: false`. The temporary output was removed after inspection.
-
-No MCP endpoint, model provider, API key, bearer token, or paid service was used. No MCP tool was
-executed. Recheck evaluates current deterministic rules against a historical capability graph; it
-does not rediscover the deployment, refresh OAuth evidence, prove current server state, or replace
-a fresh scan when deployment freshness matters.

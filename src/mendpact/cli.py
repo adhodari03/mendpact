@@ -51,11 +51,7 @@ from mendpact.drivers.openai import (
     OpenAIResponsesDriver,
 )
 from mendpact.drivers.replay import ReplayDriver
-from mendpact.evidence import (
-    EvidenceExportError,
-    export_evidence,
-    write_new_evidence_file,
-)
+from mendpact.evidence import EvidenceExportError, export_evidence
 from mendpact.guard import guard_mcp_url
 from mendpact.history_cli import app as history_app
 from mendpact.model_comparison import compare_behavior_reports, load_behavior_report
@@ -67,7 +63,6 @@ from mendpact.policy import (
     target_policy,
 )
 from mendpact.project_init import ProjectInitializationError, initialize_project
-from mendpact.recheck import recheck_scan_report
 from mendpact.regression import (
     baseline_from_report,
     compare_to_baseline,
@@ -149,67 +144,6 @@ def export_report(
         raise typer.Exit(code=2) from exc
     typer.echo("Evidence summary exported. Review before sharing; no files were uploaded.")
     typer.echo("Export success does not mean the source checks passed.")
-
-
-@app.command()
-def recheck(
-    ctx: typer.Context,
-    source: Annotated[
-        Path,
-        typer.Argument(
-            exists=True,
-            dir_okay=False,
-            readable=True,
-            help="Original complete mendpact.scan.v1 JSON report",
-        ),
-    ],
-    output: Annotated[
-        Path,
-        typer.Option("--output", "-o", help="New rechecked JSON report; never overwritten"),
-    ],
-    fail_on: Annotated[
-        Severity,
-        typer.Option(
-            "--fail-on",
-            case_sensitive=False,
-            help="Minimum current finding severity that fails CI",
-        ),
-    ] = Severity.HIGH,
-    policy_file: Annotated[
-        Path | None,
-        typer.Option(
-            "--policy",
-            exists=True,
-            dir_okay=False,
-            readable=True,
-            help="Current versioned TOML policy used for the offline recheck",
-        ),
-    ] = None,
-) -> None:
-    """Reapply current deterministic rules to a saved scan without network access."""
-
-    try:
-        applied_policy = load_policy(policy_file) if policy_file is not None else None
-        if applied_policy is not None:
-            _reject_policy_overrides(ctx, ("fail_on",))
-        report = recheck_scan_report(
-            source,
-            failure_threshold=fail_on,
-            policy=applied_policy,
-        )
-        write_new_evidence_file(output, report.model_dump_json(indent=2))
-    except ValueError as exc:
-        console.print(f"[red]Could not recheck scan:[/] {exc}")
-        raise typer.Exit(code=2) from exc
-
-    render_report(report, console)
-    console.print(f"JSON report: {output}")
-    console.print(
-        "Offline boundary: deterministic metadata rules were refreshed; "
-        "authorization evidence was preserved but not refreshed."
-    )
-    if report.status == ScanStatus.FAILED:
-        raise typer.Exit(code=1)
 
 
 def _build_behavior_driver(

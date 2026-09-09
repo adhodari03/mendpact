@@ -82,22 +82,6 @@ changes, and joins tool changes with behavior expectations to calculate a scenar
 This makes compatibility review reproducible in pull requests and independent of model-provider
 availability.
 
-Offline scan recheck is a second consumer of the normalized capability graph:
-
-```text
-original scan report --> integrity validation --> current deterministic checks
-        |                                           |
-        +--> exact-byte SHA-256                     +--> current policy + CI status
-                                                            |
-                                                            v
-                                               provenanced scan.v1 report
-```
-
-The recheck keeps the original capture identity and records its source digest, recheck time, and
-MendPact version. Network-derived authorization findings remain visible but are marked as
-unrefreshed. Recheck therefore measures current rules against historical metadata; it does not
-claim that the metadata still matches the deployment.
-
 The contract baseline lifecycle separates machine capture from human trust. Inspection validates
 the scan schema and graph structure and exposes a canonical digest. Promotion requires the exact
 scan ID and optionally the exact deployment target, then atomically writes canonical JSON. Failed
@@ -151,7 +135,6 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `adapters/` converts protocol-specific objects into the domain model.
 - `checks/` operates only on the normalized capability graph.
 - `scanner.py` orchestrates a run and determines its CI status.
-- `recheck.py` reruns current deterministic rules against one original saved scan offline.
 - `behavior.py` orchestrates replayable task-to-tool evaluations.
 - `drivers/` converts provider decisions into normalized traces.
 - `argument_matching.py` applies scenario-approved string normalization to copied arguments.

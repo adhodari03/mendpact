@@ -70,7 +70,6 @@ Completed implementation is not equivalent to deployment or validation on custom
 - [x] local minimized run-history store with deduplication and bounded listing
 - [x] descriptive history comparison with target/setup checks and explicit 14-day cleanup
 - [x] local sharing-package preparation, inspection, exact-byte acknowledgement, and expiry checks
-- [x] offline current-rule rechecks with source provenance and explicit freshness limits
 - [ ] review-and-publish workflow for versioned public evidence
 - [ ] projects, authentication, and encrypted bring-your-own-key storage
 - [ ] scheduled scans and GitHub checks

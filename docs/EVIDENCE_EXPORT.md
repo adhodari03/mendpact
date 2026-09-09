@@ -47,7 +47,7 @@ Other report types, including model comparison, calibration, and conformance, ar
 not supported yet. The source must be a regular, non-symlink file of at most 10 MiB. Duplicate
 JSON keys, non-finite JSON constants, malformed inputs, and unsupported schemas are rejected.
 
-The versioned evidence JSON contains:
+The `mendpact.evidence.v1` JSON contains:
 
 | Field | Meaning |
 | --- | --- |
@@ -57,11 +57,6 @@ The versioned evidence JSON contains:
 | `recorded_status` | Original passed, failed, or error outcome |
 | `sections` | Stage statuses and allowlisted aggregate metrics |
 | `notice`, `privacy` | Evidence limitations and sharing boundary |
-
-Current scan and guard exports use `mendpact.evidence.v2` and require an `Evidence mode` metric so
-live capture and offline deterministic recheck cannot be confused. Behavior-only exports remain
-`mendpact.evidence.v1`. Existing v1 scan and guard summaries remain readable; regenerate a package
-to add the explicit evidence-mode label.
 
 The exporter constructs an allowlist projection rather than copying and trying to redact the
 original JSON. It omits target URLs, IDs, server/tool/model names, catalog descriptions and

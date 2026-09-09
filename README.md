@@ -41,22 +41,6 @@ mendpact scan http://127.0.0.1:8000/mcp \
 The fixture intentionally exposes a destructive-looking tool, so this scan exits with code `1`
 and demonstrates the CI failure path.
 
-### Recheck a saved scan with current rules
-
-When MendPact's deterministic rules change, re-evaluate a complete saved scan without contacting
-the MCP server or a model provider:
-
-```bash
-mendpact recheck reports/original-scan.json \
-  --policy mendpact.toml \
-  --output reports/rechecked-scan.json
-```
-
-The output preserves the original capture identity and graph while recording the source-file
-digest, recheck time, and installed MendPact version. Authorization findings are preserved but not
-refreshed, and the command cannot replace its source or another existing file. See the
-[offline recheck guide](docs/RECHECK.md) for the trust boundary and GitHub Action mode.
-
 For authorized tests against independently developed servers, follow the
 [real-world validation playbook](docs/REAL_WORLD_VALIDATION.md). It includes an offline workspace
 setup script, strict policy selection, reproducibility notes, and a finding-review template.
@@ -338,8 +322,7 @@ aggregate counts, recorded outcomes, failure thresholds, the source timestamp, a
 the original file. Missing guard stages are explicitly marked as skipped. A passed result does
 not imply an absence of findings or a safety certification.
 
-Use `--format json --output reports/evidence.json` for a versioned evidence summary. Current scan
-and guard exports use `mendpact.evidence.v2`; behavior-only exports remain compatible with v1.
+Use `--format json --output reports/evidence.json` for a `mendpact.evidence.v1` summary.
 Existing output files are never overwritten. Export success is not a CI reliability gate: a
 failed source report can be exported successfully while retaining its failed status. See the
 [evidence export guide](docs/EVIDENCE_EXPORT.md) for validation, privacy boundaries, and CI usage.

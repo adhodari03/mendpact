@@ -106,8 +106,6 @@ def _validate_summary(summary: EvidenceSummary) -> None:
     """Reject arbitrary text/metrics in externally supplied minimized packages."""
 
     _require(summary.notice == NOTICE and summary.privacy == PRIVACY)
-    if summary.schema_version == "mendpact.evidence.v2":
-        _require(summary.source_schema in {"mendpact.scan.v1", "mendpact.guard.v1"})
     expected = {
         "mendpact.scan.v1": ["Capability scan"],
         "mendpact.behavior.v1": ["Behavior evaluation"],
@@ -135,17 +133,7 @@ def _validate_summary(summary: EvidenceSummary) -> None:
             required |= severities
             optional = {"Tools", "Resources", "Prompts"}
             _require(not (metrics.keys() & optional) or optional <= metrics.keys())
-            evidence_modes = {
-                "Live metadata capture",
-                "Offline deterministic recheck",
-            }
             choices = {"Fails on severity": {"info", "low", "medium", "high", "critical"}}
-            if summary.schema_version == "mendpact.evidence.v2":
-                choices["Evidence mode"] = evidence_modes
-            else:
-                optional.add("Evidence mode")
-                if "Evidence mode" in metrics:
-                    _require(metrics["Evidence mode"] in evidence_modes)
         elif section.title == "Contract comparison":
             required = {
                 "Changes",
