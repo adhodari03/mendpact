@@ -135,6 +135,14 @@ def _validate_summary(summary: EvidenceSummary) -> None:
             required |= severities
             optional = {"Tools", "Resources", "Prompts"}
             _require(not (metrics.keys() & optional) or optional <= metrics.keys())
+            delta_metrics = {
+                "Introduced findings",
+                "Resolved findings",
+                "Reclassified findings",
+                "Unchanged findings",
+            }
+            _require(not (metrics.keys() & delta_metrics) or delta_metrics <= metrics.keys())
+            optional |= delta_metrics
             evidence_modes = {
                 "Live metadata capture",
                 "Offline deterministic recheck",
@@ -179,7 +187,16 @@ def _validate_summary(summary: EvidenceSummary) -> None:
         _require(metrics.keys() <= required | choices.keys() | optional)
         for label, values in choices.items():
             _require(metrics[label] in values)
-        for label in required | (optional & {"Tools", "Resources", "Prompts"} & metrics.keys()):
+        numeric_optional = {
+            "Tools",
+            "Resources",
+            "Prompts",
+            "Introduced findings",
+            "Resolved findings",
+            "Reclassified findings",
+            "Unchanged findings",
+        }
+        for label in required | (optional & numeric_optional & metrics.keys()):
             value = metrics[label]
             _require(type(value) is int)
             _require(isinstance(value, int) and value >= 0)
