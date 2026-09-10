@@ -11,14 +11,17 @@ from mendpact.domain import (
     CapabilityNode,
     Finding,
     NodeKind,
+    RuleFindingChange,
+    RuleFindingChangeKind,
     ScanRecheckEvidence,
     ScanReport,
+    ScanRuleDelta,
     ScanStatus,
     Severity,
     summarize,
 )
 from mendpact.policy import load_policy
-from mendpact.recheck import ScanRecheckError, recheck_scan_report
+from mendpact.recheck import ScanRecheckError, compare_rule_findings, recheck_scan_report
 
 TARGET = "https://example.com/mcp"
 NOW = datetime(2026, 9, 8, 12, tzinfo=UTC)
@@ -102,7 +105,103 @@ def test_rechecks_current_rules_with_exact_source_provenance(
         mendpact_version="0.2.0",
         source_status=ScanStatus.PASSED,
         preserved_authorization_finding_count=1,
+        rule_delta=ScanRuleDelta(
+            introduced_count=1,
+            resolved_count=1,
+            reclassified_count=0,
+            unchanged_count=0,
+            changes=[
+                RuleFindingChange(
+                    kind=RuleFindingChangeKind.INTRODUCED,
+                    rule_id="MP-MCP-007",
+                    subject="tool:execute",
+                    after_severity=Severity.CRITICAL,
+                ),
+                RuleFindingChange(
+                    kind=RuleFindingChangeKind.RESOLVED,
+                    rule_id="MP-OLD-001",
+                    before_severity=Severity.LOW,
+                ),
+            ],
+        ),
     )
+
+
+def test_compares_introduced_resolved_reclassified_and_unchanged_findings() -> None:
+    previous = [
+        Finding(rule_id="MP-A", severity=Severity.LOW, title="A", message="A"),
+        Finding(rule_id="MP-B", severity=Severity.HIGH, title="B", message="B"),
+        Finding(rule_id="MP-C", severity=Severity.MEDIUM, title="C", message="C"),
+        Finding(rule_id="MP-C", severity=Severity.LOW, title="C duplicate", message="C"),
+    ]
+    current = [
+        Finding(rule_id="MP-B", severity=Severity.CRITICAL, title="B", message="B"),
+        Finding(rule_id="MP-C", severity=Severity.MEDIUM, title="C", message="C"),
+        Finding(rule_id="MP-D", severity=Severity.HIGH, title="D", message="D"),
+    ]
+
+    delta = compare_rule_findings(previous, current)
+
+    assert delta.introduced_count == 1
+    assert delta.resolved_count == 1
+    assert delta.reclassified_count == 1
+    assert delta.unchanged_count == 1
+    assert [(change.rule_id, change.kind) for change in delta.changes] == [
+        ("MP-A", RuleFindingChangeKind.RESOLVED),
+        ("MP-B", RuleFindingChangeKind.RECLASSIFIED),
+        ("MP-D", RuleFindingChangeKind.INTRODUCED),
+    ]
+    assert delta.changes[1].before_severity == Severity.HIGH
+    assert delta.changes[1].after_severity == Severity.CRITICAL
+
+
+def test_scan_recheck_v1_without_rule_delta_remains_readable() -> None:
+    evidence = ScanRecheckEvidence(
+        source_sha256="0" * 64,
+        mendpact_version="0.2.0",
+        source_status=ScanStatus.PASSED,
+        preserved_authorization_finding_count=0,
+    )
+
+    assert evidence.rule_delta is None
+
+
+def test_rule_change_rejects_an_invalid_severity_transition() -> None:
+    with pytest.raises(ValueError, match="invalid severity transition"):
+        RuleFindingChange(
+            kind=RuleFindingChangeKind.INTRODUCED,
+            rule_id="MP-MCP-007",
+            before_severity=Severity.LOW,
+            after_severity=Severity.CRITICAL,
+        )
+
+
+def test_rule_delta_rejects_counts_that_do_not_match_changes() -> None:
+    with pytest.raises(ValueError, match="counts do not match"):
+        ScanRuleDelta(
+            introduced_count=1,
+            resolved_count=0,
+            reclassified_count=0,
+            unchanged_count=0,
+        )
+
+
+def test_rule_delta_rejects_duplicate_rule_subject_changes() -> None:
+    change = RuleFindingChange(
+        kind=RuleFindingChangeKind.INTRODUCED,
+        rule_id="MP-MCP-007",
+        subject="tool:execute",
+        after_severity=Severity.CRITICAL,
+    )
+
+    with pytest.raises(ValueError, match="duplicate rule and subject"):
+        ScanRuleDelta(
+            introduced_count=2,
+            resolved_count=0,
+            reclassified_count=0,
+            unchanged_count=0,
+            changes=[change, change],
+        )
 
 
 def test_recheck_can_use_a_different_threshold(tmp_path: Path) -> None:
