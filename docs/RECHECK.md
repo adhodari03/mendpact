@@ -27,7 +27,29 @@ The optional `recheck` object records:
 - the recheck time and MendPact version;
 - the original recorded status;
 - the count of preserved authorization findings; and
-- `authorization_refreshed: false`.
+- `authorization_refreshed: false`;
+- a versioned deterministic `rule_delta`.
+
+## Rule impact delta
+
+The `rule_delta` explains how the installed deterministic rules changed the recorded result. It
+counts distinct `(rule_id, subject)` pairs as:
+
+- `introduced` when only the current rules report the pair;
+- `resolved` when only the saved report contains the pair;
+- `reclassified` when the pair remains but its severity changes; or
+- `unchanged` when both reports contain the pair at the same severity.
+
+Each introduced, resolved, or reclassified pair is included in `changes` with its before and after
+severity. If duplicate findings share an identity, MendPact compares their highest recorded
+severity so a lower duplicate cannot hide a more serious result. The terminal and GitHub Action
+summaries show the counts and changed pairs. Privacy-minimized evidence exports retain only the
+four aggregate counts, not rule IDs or subjects.
+
+Authorization findings (`MP-AUTH-*`) are excluded because offline recheck cannot refresh their
+network-derived evidence. Waiver changes are also excluded: the delta compares unwaived rule
+outputs, then applies the selected current policy separately. This makes the delta an explanation
+of deterministic rule impact, not a policy-change audit.
 
 The output remains a `mendpact.scan.v1` report so existing diff, evidence, history, and job-summary
 tools can read it. Those views label it as an offline deterministic recheck. The command creates a

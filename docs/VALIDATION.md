@@ -513,3 +513,31 @@ No MCP endpoint, model provider, API key, bearer token, or paid service was used
 executed. Recheck evaluates current deterministic rules against a historical capability graph; it
 does not rediscover the deployment, refresh OAuth evidence, prove current server state, or replace
 a fresh scan when deployment freshness matters.
+
+## Offline recheck rule-impact validation
+
+Date: September 9, 2026
+
+The rule-impact slice was implemented on `feat/recheck-rule-deltas`. The complete local suite
+passed 426 tests with warnings treated as errors and reported 88% statement coverage. Ruff and
+strict MyPy passed across all 40 source files. Bash syntax checks passed for both Action scripts;
+the CI, Pages, and Action YAML files parsed successfully; the five-file static website passed its
+local link and anchor validator; and Git diff whitespace validation passed.
+
+Tests cover introduced, resolved, severity-reclassified, and unchanged rule/subject pairs;
+conservative severity selection for duplicate findings; exclusion of preserved authorization
+findings; invalid transition, count, and duplicate-identity rejection; backward compatibility for
+recheck evidence without a delta; CLI and GitHub summary rendering; privacy-minimized aggregate
+exports; and rejection of partially supplied sharing metrics. The CI recheck smoke now verifies
+the serialized `mendpact.scan-rule-delta.v1` block.
+
+A local CLI smoke rechecked the committed candidate scan under the current local reliability
+policy. It produced a passing report with a zero-change delta, which is expected because that
+fixture had no old or current deterministic findings. Changed-pair behavior is exercised with
+controlled offline fixtures in the test suite. Temporary smoke output was removed after
+inspection.
+
+No MCP endpoint, model provider, API key, bearer token, or paid service was used. The delta
+compares rule ID, subject, and severity only; it does not identify which source-code edit caused a
+change, audit waiver changes, refresh authorization evidence, or prove that the historical graph
+still describes a live deployment.

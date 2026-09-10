@@ -61,7 +61,9 @@ The versioned evidence JSON contains:
 Current scan and guard exports use `mendpact.evidence.v2` and require an `Evidence mode` metric so
 live capture and offline deterministic recheck cannot be confused. Behavior-only exports remain
 `mendpact.evidence.v1`. Existing v1 scan and guard summaries remain readable; regenerate a package
-to add the explicit evidence-mode label.
+to add the explicit evidence-mode label. When a recheck contains a deterministic rule-impact
+delta, the minimized export adds introduced, resolved, reclassified, and unchanged counts as one
+all-or-none metric group. It omits the affected rule IDs and subjects.
 
 The exporter constructs an allowlist projection rather than copying and trying to redact the
 original JSON. It omits target URLs, IDs, server/tool/model names, catalog descriptions and

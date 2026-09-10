@@ -230,8 +230,9 @@ jobs:
 
 Use `main` only while reviewing an unreleased feature; pin the resulting release tag or full commit
 SHA afterward. The Action rejects target, authentication, and target-network allowance inputs in
-this mode. It preserves unrefreshed authorization findings and cannot prove that the saved graph
-still matches the deployed endpoint.
+this mode. Its job summary shows introduced, resolved, severity-reclassified, and unchanged
+deterministic finding pairs. It preserves unrefreshed authorization findings and cannot prove that
+the saved graph still matches the deployed endpoint.
 
 ## Bounded model evaluation mode
 
