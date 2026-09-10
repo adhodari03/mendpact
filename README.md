@@ -54,7 +54,8 @@ mendpact recheck reports/original-scan.json \
 
 The output preserves the original capture identity and graph while recording the source-file
 digest, recheck time, and installed MendPact version. Authorization findings are preserved but not
-refreshed, and the command cannot replace its source or another existing file. See the
+refreshed. A rule-impact delta identifies findings introduced, resolved, or severity-reclassified
+by the installed rules, and the command cannot replace its source or another existing file. See the
 [offline recheck guide](docs/RECHECK.md) for the trust boundary and GitHub Action mode.
 
 For authorized tests against independently developed servers, follow the

@@ -195,6 +195,68 @@ class OAuthMetadataEvidence(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class RuleFindingChangeKind(StrEnum):
+    """How one deterministic rule/subject pair changed during an offline recheck."""
+
+    INTRODUCED = "introduced"
+    RESOLVED = "resolved"
+    RECLASSIFIED = "reclassified"
+
+
+class RuleFindingChange(BaseModel):
+    """One actionable difference between recorded and current deterministic findings."""
+
+    kind: RuleFindingChangeKind
+    rule_id: str
+    subject: str | None = None
+    before_severity: Severity | None = None
+    after_severity: Severity | None = None
+
+    @model_validator(mode="after")
+    def validate_severity_transition(self) -> RuleFindingChange:
+        if self.kind == RuleFindingChangeKind.INTRODUCED:
+            valid = self.before_severity is None and self.after_severity is not None
+        elif self.kind == RuleFindingChangeKind.RESOLVED:
+            valid = self.before_severity is not None and self.after_severity is None
+        else:
+            valid = (
+                self.before_severity is not None
+                and self.after_severity is not None
+                and self.before_severity != self.after_severity
+            )
+        if not valid:
+            raise ValueError("rule finding change has an invalid severity transition")
+        return self
+
+
+class ScanRuleDelta(BaseModel):
+    """Compact difference between old and current deterministic rule outcomes."""
+
+    schema_version: Literal["mendpact.scan-rule-delta.v1"] = (
+        "mendpact.scan-rule-delta.v1"
+    )
+    introduced_count: int = Field(ge=0)
+    resolved_count: int = Field(ge=0)
+    reclassified_count: int = Field(ge=0)
+    unchanged_count: int = Field(ge=0)
+    changes: list[RuleFindingChange] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_counts_and_unique_changes(self) -> ScanRuleDelta:
+        expected = {
+            RuleFindingChangeKind.INTRODUCED: self.introduced_count,
+            RuleFindingChangeKind.RESOLVED: self.resolved_count,
+            RuleFindingChangeKind.RECLASSIFIED: self.reclassified_count,
+        }
+        for kind, count in expected.items():
+            if sum(change.kind == kind for change in self.changes) != count:
+                raise ValueError("rule delta counts do not match its changes")
+        identities = [(change.rule_id, change.subject) for change in self.changes]
+        if len(identities) != len(set(identities)):
+            raise ValueError("rule delta contains duplicate rule and subject changes")
+        return self
+
+
 class ScanRecheckEvidence(BaseModel):
     """Provenance for deterministic rules rerun against a saved capability graph."""
 
@@ -205,6 +267,7 @@ class ScanRecheckEvidence(BaseModel):
     source_status: ScanStatus
     preserved_authorization_finding_count: int = Field(ge=0)
     authorization_refreshed: Literal[False] = False
+    rule_delta: ScanRuleDelta | None = None
 
 
 class ScanReport(BaseModel):

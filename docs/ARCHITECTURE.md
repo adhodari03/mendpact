@@ -86,17 +86,19 @@ Offline scan recheck is a second consumer of the normalized capability graph:
 
 ```text
 original scan report --> integrity validation --> current deterministic checks
-        |                                           |
-        +--> exact-byte SHA-256                     +--> current policy + CI status
-                                                            |
-                                                            v
-                                               provenanced scan.v1 report
+        |                         |                         |
+        +--> exact-byte SHA-256   +--> old vs current      +--> current policy + CI status
+                                      rule-impact delta                 |
+                                                                        v
+                                                           provenanced scan.v1 report
 ```
 
 The recheck keeps the original capture identity and records its source digest, recheck time, and
-MendPact version. Network-derived authorization findings remain visible but are marked as
-unrefreshed. Recheck therefore measures current rules against historical metadata; it does not
-claim that the metadata still matches the deployment.
+MendPact version. It compares deterministic findings by rule and subject before applying current
+waivers, reporting introduced, resolved, severity-reclassified, and unchanged pairs.
+Network-derived authorization findings remain visible but are marked as unrefreshed and excluded
+from that delta. Recheck therefore measures current rules against historical metadata; it does
+not claim that the metadata still matches the deployment.
 
 The contract baseline lifecycle separates machine capture from human trust. Inspection validates
 the scan schema and graph structure and exposes a canonical digest. Promotion requires the exact
@@ -151,7 +153,8 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `adapters/` converts protocol-specific objects into the domain model.
 - `checks/` operates only on the normalized capability graph.
 - `scanner.py` orchestrates a run and determines its CI status.
-- `recheck.py` reruns current deterministic rules against one original saved scan offline.
+- `recheck.py` reruns current deterministic rules and explains their finding delta against one
+  original saved scan offline.
 - `behavior.py` orchestrates replayable task-to-tool evaluations.
 - `drivers/` converts provider decisions into normalized traces.
 - `argument_matching.py` applies scenario-approved string normalization to copied arguments.

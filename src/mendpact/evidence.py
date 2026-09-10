@@ -108,6 +108,14 @@ def _scan_section(report: ScanReport) -> EvidenceSection:
             + len(report.graph.nodes_of_kind(NodeKind.RESOURCE_TEMPLATE)),
             "Prompts": len(report.graph.nodes_of_kind(NodeKind.PROMPT)),
         })
+    if report.recheck is not None and report.recheck.rule_delta is not None:
+        delta = report.recheck.rule_delta
+        metrics.update({
+            "Introduced findings": delta.introduced_count,
+            "Resolved findings": delta.resolved_count,
+            "Reclassified findings": delta.reclassified_count,
+            "Unchanged findings": delta.unchanged_count,
+        })
     return EvidenceSection(title="Capability scan", status=report.status, metrics=metrics)
 
 

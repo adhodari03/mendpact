@@ -78,6 +78,58 @@ def test_renders_offline_recheck_provenance() -> None:
     assert "No" in rendered.summary
 
 
+def test_renders_offline_recheck_rule_impact() -> None:
+    payload = _scan_payload()
+    payload["recheck"] = {
+        "source_sha256": "a" * 64,
+        "source_status": "passed",
+        "rechecked_at": "2026-09-08T12:00:00Z",
+        "mendpact_version": "0.2.0",
+        "authorization_refreshed": False,
+        "rule_delta": {
+            "schema_version": "mendpact.scan-rule-delta.v1",
+            "introduced_count": 1,
+            "resolved_count": 1,
+            "reclassified_count": 1,
+            "unchanged_count": 2,
+            "changes": [
+                {
+                    "kind": "introduced",
+                    "rule_id": "MP-MCP-007",
+                    "subject": "tool:execute",
+                    "before_severity": None,
+                    "after_severity": "critical",
+                },
+                {
+                    "kind": "resolved",
+                    "rule_id": "MP-OLD-001",
+                    "subject": None,
+                    "before_severity": "low",
+                    "after_severity": None,
+                },
+                {
+                    "kind": "reclassified",
+                    "rule_id": "MP-MCP-004",
+                    "subject": "tool:delete_project",
+                    "before_severity": "medium",
+                    "after_severity": "high",
+                },
+            ],
+        },
+    }
+
+    rendered = render_action_report(payload, "recheck.json")
+
+    assert "#### Rule impact" in rendered.summary
+    assert "| 1 | 1 | 1 | 2 |" in rendered.summary
+    assert "#### Deterministic rule changes" in rendered.summary
+    assert "INTRODUCED" in rendered.summary
+    assert "RESOLVED" in rendered.summary
+    assert "RECLASSIFIED" in rendered.summary
+    assert "MP-MCP-007" in rendered.summary
+    assert "tool:delete_project" in rendered.summary
+
+
 def test_renders_guard_stages_contract_changes_and_failed_trials() -> None:
     payload: dict[str, object] = {
         "schema_version": "mendpact.guard.v1",

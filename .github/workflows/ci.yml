@@ -78,6 +78,12 @@ jobs:
               source.read_bytes()
           ).hexdigest()
           assert report["recheck"]["authorization_refreshed"] is False
+          delta = report["recheck"]["rule_delta"]
+          assert delta["schema_version"] == "mendpact.scan-rule-delta.v1"
+          assert delta["introduced_count"] == 0
+          assert delta["resolved_count"] == 0
+          assert delta["reclassified_count"] == 0
+          assert delta["unchanged_count"] == 0
           PY
       - name: Offline local history smoke test
         run: |
