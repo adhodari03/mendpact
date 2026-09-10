@@ -125,6 +125,34 @@ def render_report(report: ScanReport, console: Console) -> None:
             f"MendPact: {report.recheck.mendpact_version} | "
             "Authorization evidence refreshed: no"
         )
+        if report.recheck.rule_delta:
+            delta = report.recheck.rule_delta
+            console.print(
+                f"Rule impact: Introduced: {delta.introduced_count} | "
+                f"Resolved: {delta.resolved_count} | "
+                f"Reclassified: {delta.reclassified_count} | "
+                f"Unchanged: {delta.unchanged_count}"
+            )
+            if delta.changes:
+                delta_table = Table(show_header=True, header_style="bold")
+                delta_table.add_column("Change", width=14)
+                delta_table.add_column("Rule", width=14)
+                delta_table.add_column("Subject", overflow="fold")
+                delta_table.add_column("Before", width=10)
+                delta_table.add_column("After", width=10)
+                for change in delta.changes:
+                    delta_table.add_row(
+                        change.kind.value.upper(),
+                        change.rule_id,
+                        change.subject or "-",
+                        change.before_severity.value.upper()
+                        if change.before_severity
+                        else "-",
+                        change.after_severity.value.upper()
+                        if change.after_severity
+                        else "-",
+                    )
+                console.print(delta_table)
     if report.policy:
         console.print(
             f"Policy: {report.policy.name} ({report.policy.profile.value}) | "

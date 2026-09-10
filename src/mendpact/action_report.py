@@ -121,6 +121,8 @@ def _scan_sections(scan: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
     annotations: list[Annotation] = []
     recheck = scan.get("recheck")
     if isinstance(recheck, dict):
+        rule_delta = recheck.get("rule_delta")
+        delta = rule_delta if isinstance(rule_delta, dict) else {}
         lines.extend(
             [
                 "### Offline recheck provenance",
@@ -146,6 +148,57 @@ def _scan_sections(scan: dict[str, Any]) -> tuple[list[str], list[Annotation]]:
                 "",
             ]
         )
+        if delta:
+            lines.extend(
+                [
+                    "#### Rule impact",
+                    "",
+                    *_table(
+                        ["Introduced", "Resolved", "Reclassified", "Unchanged"],
+                        [
+                            [
+                                delta.get("introduced_count", 0),
+                                delta.get("resolved_count", 0),
+                                delta.get("reclassified_count", 0),
+                                delta.get("unchanged_count", 0),
+                            ]
+                        ],
+                    ),
+                    "",
+                ]
+            )
+        changes = [
+            item for item in delta.get("changes", []) if isinstance(item, dict)
+        ]
+        if changes:
+            shown, omitted = _limited_rows(changes)
+            lines.extend(
+                [
+                    "#### Deterministic rule changes",
+                    "",
+                    *_table(
+                        ["Change", "Rule", "Subject", "Before", "After"],
+                        [
+                            [
+                                str(item.get("kind", "unknown")).upper(),
+                                item.get("rule_id"),
+                                item.get("subject"),
+                                item.get("before_severity"),
+                                item.get("after_severity"),
+                            ]
+                            for item in shown
+                        ],
+                    ),
+                    "",
+                ]
+            )
+            if omitted:
+                lines.extend(
+                    [
+                        f"_{omitted} additional rule changes are available in the JSON report._",
+                        "",
+                    ]
+                )
     authorization = scan.get("authorization")
     if isinstance(authorization, dict):
         lines.extend(

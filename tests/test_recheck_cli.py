@@ -74,10 +74,15 @@ def test_cli_recheck_writes_provenanced_report_and_returns_policy_exit_code(
     assert "MendPact scan recheck: FAILED" in result.stdout
     assert "deterministic metadata rules were refreshed" in result.stdout
     assert "evidence was preserved but not refreshed" in result.stdout
+    assert "Rule impact: Introduced: 1" in result.stdout
+    assert "INTRODUCED" in result.stdout
+    assert "MP-MCP-007" in result.stdout
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["scan_id"] == "original-scan"
     assert payload["recheck"]["source_sha256"]
     assert payload["recheck"]["authorization_refreshed"] is False
+    assert payload["recheck"]["rule_delta"]["introduced_count"] == 1
+    assert payload["recheck"]["rule_delta"]["resolved_count"] == 0
     assert [finding["rule_id"] for finding in payload["findings"]] == ["MP-MCP-007"]
 
 
