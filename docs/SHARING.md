@@ -97,9 +97,26 @@ the package and receipt can forge an acknowledgement. There is no trusted issuer
 protected approver identity, or remote revocation mechanism. Those belong to the planned signed
 passport and authenticated publication work.
 
-Keep the verified file unchanged between verification and upload. There is no integrated
-publisher yet, so the tool cannot guarantee that another program will upload those exact bytes.
-Any future publisher must enforce the receipt check itself at its upload boundary.
+Keep the verified file unchanged between verification and the next step. MendPact can prepare and
+verify a static evidence directory from that package, but it does not upload the directory. See
+the [static evidence guide](PUBLIC_EVIDENCE.md).
+
+### 5. Prepare and verify static files
+
+```bash
+mendpact share prepare-site reports/review-package.zip \
+  --approval reports/sharing-approval.json \
+  --output reports/public-evidence
+
+mendpact share verify-site reports/public-evidence \
+  --package reports/review-package.zip \
+  --approval reports/sharing-approval.json
+```
+
+Preparation writes canonical `index.html` and `summary.json` bytes, a versioned publication
+manifest, and `.nojekyll` into a new directory. Verification checks those exact files against the
+original package and a still-current receipt. Neither command invokes Git, changes GitHub Pages,
+or publishes a URL.
 
 ## Expiry is not deletion
 
@@ -108,14 +125,16 @@ published page, or recall somebody else's download. The HTML remains readable af
 Deleting a local receipt also cannot revoke external copies. Hosted deletion, access controls,
 retention enforcement, and revocation require a separate implementation.
 
-The commands do not write to `site/`, push to GitHub, upload artifacts, change repository
-permissions, or contact a hosting provider. Keep locally generated ZIPs and receipts under the
-ignored `reports/` directory. If you work in another repository or choose another output path,
+No command selects the repository's `site/` directory, pushes to GitHub, uploads artifacts, changes
+repository permissions, or contacts a hosting provider. Keep locally generated ZIPs, receipts, and
+prepared evidence directories under the ignored `reports/` directory until you deliberately move
+only the four public files into a publishing repository. If you choose another output path,
 configure its ignore rules yourself. Do not attach raw source reports alongside the package.
 
 ## Exit behavior
 
-- `0`: preparation, structural inspection, acknowledgement creation, or verification succeeded.
+- `0`: package/site preparation, structural inspection, acknowledgement creation, or verification
+  succeeded.
 - `2`: invalid input, unsafe archive, wrong fingerprint, missing acknowledgement, expired/invalid
   receipt, or output failure.
 
@@ -124,11 +143,12 @@ gates. Successful package verification says nothing about whether its recorded c
 
 ## Testing and CI
 
-The test suite covers all four CLI commands, privacy sentinels, deterministic packages, exact
-fingerprint binding, expiry boundaries, unsafe/malformed archives, output preservation, and
-network-denied execution. Unit tests generate acknowledgements for synthetic fixtures only;
-these are not real user consent records.
+The test suite covers all six CLI commands, privacy sentinels, deterministic packages, exact
+fingerprint binding, expiry boundaries, unsafe/malformed archives and static directories, output
+preservation and cleanup, and network-denied execution. Unit tests generate acknowledgements for
+synthetic fixtures only; these are not real user consent records.
 
 Repository CI prepares and inspects one committed fixture package. It deliberately does not
 approve or publish it. Automatic approvals of arbitrary PR-produced reports are not a human
-review workflow. GitHub Pages remains the project website, not a report-upload destination.
+review workflow. This repository's GitHub Pages deployment remains the project website, not an
+automatic report-upload destination.

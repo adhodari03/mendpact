@@ -397,10 +397,24 @@ mendpact share verify reports/review-package.zip \
   --approval reports/sharing-approval.json
 ```
 
-Approval lasts seven days by default and at most 14 days. These commands do not upload or publish
-anything. An unsigned acknowledgement is not proof of reviewer identity, a live provider call,
-or safety. Verification does not change the source report's failed/error outcome. See the
-[reviewed sharing guide](docs/SHARING.md) for exact-byte checks, expiry, and publication limits.
+After that exact package is acknowledged, prepare and verify static files for a separate GitHub
+Pages workflow:
+
+```bash
+mendpact share prepare-site reports/review-package.zip \
+  --approval reports/sharing-approval.json \
+  --output reports/public-evidence
+
+mendpact share verify-site reports/public-evidence \
+  --package reports/review-package.zip \
+  --approval reports/sharing-approval.json
+```
+
+Approval lasts seven days by default and at most 14 days. These commands do not upload, push, or
+publish anything. An unsigned acknowledgement is not proof of reviewer identity, a live provider
+call, or safety. Verification does not change the source report's failed/error outcome. See the
+[reviewed sharing guide](docs/SHARING.md) and [static evidence guide](docs/PUBLIC_EVIDENCE.md) for
+exact-byte checks, expiry, and publication limits.
 
 ## GitHub Action
 

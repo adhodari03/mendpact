@@ -100,6 +100,24 @@ Network-derived authorization findings remain visible but are marked as unrefres
 from that delta. Recheck therefore measures current rules against historical metadata; it does
 not claim that the metadata still matches the deployment.
 
+The public-evidence preparation layer consumes only a canonical minimized sharing package and its
+matching, unexpired local acknowledgement:
+
+```text
+private report --> minimized ZIP --> exact-byte review + acknowledgement
+                                           |
+                                           v
+                                  static evidence directory
+                                  index + summary + manifest
+                                           |
+                                           v
+                                 separate human publish step
+```
+
+The publication manifest binds the static HTML and JSON to the reviewed package and approval
+window. It is not signed and cannot establish reviewer identity. The CLI prepares and re-verifies
+local files but deliberately does not invoke Git or a hosting provider.
+
 The contract baseline lifecycle separates machine capture from human trust. Inspection validates
 the scan schema and graph structure and exposes a canonical digest. Promotion requires the exact
 scan ID and optionally the exact deployment target, then atomically writes canonical JSON. Failed
@@ -155,6 +173,7 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `scanner.py` orchestrates a run and determines its CI status.
 - `recheck.py` reruns current deterministic rules and explains their finding delta against one
   original saved scan offline.
+- `publication.py` prepares and verifies review-gated static evidence files without uploading.
 - `behavior.py` orchestrates replayable task-to-tool evaluations.
 - `drivers/` converts provider decisions into normalized traces.
 - `argument_matching.py` applies scenario-approved string normalization to copied arguments.
