@@ -541,3 +541,31 @@ No MCP endpoint, model provider, API key, bearer token, or paid service was used
 compares rule ID, subject, and severity only; it does not identify which source-code edit caused a
 change, audit waiver changes, refresh authorization evidence, or prove that the historical graph
 still describes a live deployment.
+
+## Review-gated static evidence-site validation
+
+Date: September 10, 2026
+
+The static evidence-site slice was implemented on `feat/public-evidence-site`. The complete local
+suite passed 442 tests with warnings treated as errors and reported 88% statement coverage. Ruff
+and strict MyPy passed across all 41 source files. Both Action scripts passed Bash syntax checks;
+the CI, Pages, and Action YAML files parsed successfully; JavaScript syntax and the five-file
+project website validator passed; and Git diff whitespace validation passed.
+
+Sixteen publication tests cover exact static bytes, the versioned publication manifest, package
+and source fingerprint binding, acknowledgement expiry, private-text exclusion, exclusive output
+creation, partial-output cleanup, bounded regular files, extra and modified files, symlink and
+hard-link rejection, duplicate manifest keys, safe CLI errors, network-denied CLI execution, and a
+package replacement between validation reads. Existing sharing-package tests continue to pass.
+
+The new `share prepare-site` command requires a canonical package and its matching current
+acknowledgement before creating `index.html`, `summary.json`, `publication.json`, and `.nojekyll`.
+`share verify-site` checks those files again against the original package and receipt. The project
+website now explains this offline review path and provides copyable preparation commands; its
+existing design, dependency-free build, and GitHub Pages deployment boundary are preserved.
+
+No MCP endpoint, model provider, API key, bearer token, paid service, GitHub write operation, or
+remote publisher was used. Test acknowledgements are synthetic fixtures, not user consent. The
+publication manifest and receipt remain unsigned: they do not prove reviewer identity, source
+freshness, live execution, or safety. Approval expiry does not delete an already published page;
+hosted deletion and revocation remain future work.

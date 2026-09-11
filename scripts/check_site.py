@@ -18,6 +18,9 @@ class SiteParser(HTMLParser):
         self.errors: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        names = [name for name, _ in attrs]
+        if len(names) != len(set(names)):
+            self.errors.append(f"Element <{tag}> contains a duplicate attribute")
         attributes = dict(attrs)
         element_id = attributes.get("id")
         if element_id:
@@ -30,6 +33,8 @@ class SiteParser(HTMLParser):
                 self.links.append(value)
         if tag == "img" and "alt" not in attributes:
             self.errors.append("Image is missing an alt attribute")
+        if tag == "button" and attributes.get("type") != "button":
+            self.errors.append("Button must declare type='button'")
 
 
 def main() -> int:

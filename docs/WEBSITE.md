@@ -5,18 +5,20 @@ The project website lives in `site/` and is prepared for GitHub Pages at
 repository named `github.io` or custom domain is required.
 
 The website describes capabilities available in source, links to the repository documentation,
-and labels the contract-change demonstration as illustrative. It does not scan endpoints or call
-model providers. OpenAI's single recorded live integration check is distinguished from Anthropic
-and Gemini's mocked tests. Hosted services remain labelled as planned.
+labels the contract-change demonstration as illustrative, and explains the offline static-evidence
+workflow. It does not scan endpoints or call model providers. OpenAI's single recorded live
+integration check is distinguished from Anthropic and Gemini's mocked tests. Hosted services
+remain labelled as planned.
 
 ## Files
 
 - `site/index.html`: content, navigation, examples, and accessible document structure.
 - `site/styles.css`: responsive layout, colors, typography, and reduced-motion support.
-- `site/app.js`: illustrative change selector and clipboard button.
+- `site/app.js`: illustrative change selector and scoped command-copy buttons.
 - `site/assets/mark.svg`: local vector brand mark and favicon.
 - `site/.nojekyll`: keeps the published directory as static assets.
-- `scripts/check_site.py`: validates the publishable file set, links, anchors, and image alt text.
+- `scripts/check_site.py`: validates the publishable file set, links, anchors, image alt text,
+  duplicate attributes, and explicit button types.
 - `.github/workflows/pages.yml`: validates pull requests and publishes only from `main`.
 
 There are no frontend dependencies, build step, analytics, external fonts, or credentials. Only
@@ -34,7 +36,8 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory site
 ```
 
 Open `http://127.0.0.1:8080/`. Check desktop and narrow layouts, keyboard navigation, all three
-demo choices, and the copy button. Press Ctrl+C to stop the preview server.
+demo choices, the evidence workflow, and both copy buttons. Press Ctrl+C to stop the preview
+server.
 
 ## Enable GitHub Pages
 
