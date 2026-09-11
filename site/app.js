@@ -64,13 +64,15 @@ document.querySelectorAll("[data-example]").forEach((button) => {
 
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
-    const status = document.getElementById("copy-status");
+    const status = document.getElementById(button.dataset.status);
     try {
       await navigator.clipboard.writeText(
         document.getElementById(button.dataset.copy).textContent,
       );
       status.textContent =
-        "Commands copied. Replace the example URL with your own endpoint.";
+        button.dataset.copy === "install-code"
+          ? "Commands copied. Replace the example URL with your own endpoint."
+          : "Evidence-site commands copied. Review the package before running them.";
       button.textContent = "Copied ✓";
       window.setTimeout(() => {
         button.textContent = "Copy commands";
