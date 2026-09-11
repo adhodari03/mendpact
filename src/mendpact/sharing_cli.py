@@ -6,6 +6,11 @@ from typing import Annotated
 import typer
 
 from mendpact.evidence import EvidenceExportError
+from mendpact.publication import (
+    PublicationError,
+    inspect_publication_site,
+    prepare_publication_site,
+)
 from mendpact.sharing import (
     DISCLOSURE,
     PackageInspection,
@@ -115,3 +120,43 @@ def verify(
         f"Exact package has a current acknowledgement until {receipt.expires_at.isoformat()}."
     )
     typer.echo("No identity, live call, or safety claim verified. No files uploaded.")
+
+
+@app.command("prepare-site")
+def prepare_site(
+    package: Annotated[Path, typer.Argument(help="Exact sharing ZIP you reviewed")],
+    approval: Annotated[Path, typer.Option("--approval", help="Local approval JSON receipt")],
+    output: Annotated[Path, typer.Option("--output", help="New static output directory")],
+) -> None:
+    """Prepare an acknowledged package as static files; never uploads."""
+
+    try:
+        inspection = prepare_publication_site(package, approval, output)
+    except (SharingError, PublicationError) as exc:
+        _error(exc)
+        return
+    typer.echo(
+        "Static evidence site prepared from the exact acknowledged package "
+        f"until {inspection.manifest.approval_expires_at.isoformat()}."
+    )
+    typer.echo("Nothing was uploaded. Verify again immediately before a separate publish step.")
+
+
+@app.command("verify-site")
+def verify_site(
+    directory: Annotated[Path, typer.Argument(help="Prepared static evidence directory")],
+    package: Annotated[Path, typer.Option("--package", help="Exact reviewed sharing ZIP")],
+    approval: Annotated[Path, typer.Option("--approval", help="Local approval JSON receipt")],
+) -> None:
+    """Verify static files, package bytes, and acknowledgement before publishing."""
+
+    try:
+        inspection = inspect_publication_site(directory, package, approval)
+    except (SharingError, PublicationError) as exc:
+        _error(exc)
+        return
+    typer.echo(
+        "Static evidence site matches the acknowledged package; acknowledgement expires "
+        f"{inspection.manifest.approval_expires_at.isoformat()}."
+    )
+    typer.echo("No identity, live call, safety claim, or remote publication was verified.")
