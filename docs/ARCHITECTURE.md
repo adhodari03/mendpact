@@ -173,6 +173,8 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `scanner.py` orchestrates a run and determines its CI status.
 - `recheck.py` reruns current deterministic rules and explains their finding delta against one
   original saved scan offline.
+- `batch_recheck.py` discovers a bounded directory of original scans, reuses one loaded policy,
+  and writes neutral per-input outputs plus a versioned operational manifest.
 - `publication.py` prepares and verifies review-gated static evidence files without uploading.
 - `behavior.py` orchestrates replayable task-to-tool evaluations.
 - `drivers/` converts provider decisions into normalized traces.

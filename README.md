@@ -58,6 +58,21 @@ refreshed. A rule-impact delta identifies findings introduced, resolved, or seve
 by the installed rules, and the command cannot replace its source or another existing file. See the
 [offline recheck guide](docs/RECHECK.md) for the trust boundary and GitHub Action mode.
 
+For a repository or validation workspace with several original scans, process up to 100 reports in
+one bounded offline run:
+
+```bash
+mendpact recheck-batch reports/original-scans \
+  --policy mendpact.toml \
+  --output-dir reports/recheck-2026-09-11
+```
+
+The new output directory contains numbered rechecked reports and `batch-manifest.json`. The
+manifest records aggregate outcomes, current policy identity, source-file digests, and rule-delta
+counts without retaining input filenames or targets. Valid inputs continue when another input is
+invalid; any input error makes the command exit `2`, while policy failures without input errors
+exit `1`. The manifest is an operational artifact, not a privacy-minimized public export.
+
 For authorized tests against independently developed servers, follow the
 [real-world validation playbook](docs/REAL_WORLD_VALIDATION.md). It includes an offline workspace
 setup script, strict policy selection, reproducibility notes, and a finding-review template.

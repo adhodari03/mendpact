@@ -67,6 +67,41 @@ production state. Run a new `mendpact scan` when endpoint freshness matters. A r
 cannot be used as another recheck source, which keeps the provenance chain limited to one original
 capture.
 
+## Batch recheck
+
+Use `recheck-batch` when the same current policy and installed rule set should be applied to many
+original scans:
+
+```bash
+mendpact recheck-batch reports/original-scans \
+  --policy mendpact.toml \
+  --output-dir reports/recheck-2026-09-11
+```
+
+The source must be a directory. MendPact reads only its direct `.json` children, orders them
+case-insensitively by filename, and refuses more than 100 inputs. It does not recurse or follow
+symbolic links. The output must be a new directory, so a rerun cannot silently replace earlier
+evidence. MendPact loads the policy once and gives every valid report the same recheck timestamp.
+
+Outputs use neutral names from `recheck-001.json` through `recheck-100.json`. This order matches
+the sorted inputs, while the manifest intentionally omits source filenames and targets. Each valid
+item records its exact source SHA-256, recorded status, finding count, output filename, and
+aggregate rule-delta counts. Invalid inputs retain only their position and the safe
+`invalid_source` code. The manifest is local operational evidence and is not a privacy-minimized
+public export.
+
+The batch continues past an invalid report so the remaining saved scans are still useful. Its
+exit code is conservative:
+
+- `0`: every input was valid and passed the selected threshold;
+- `1`: every input was valid, but at least one recheck failed policy;
+- `2`: at least one input was invalid or batch setup/output failed.
+
+An exit of `2` can coexist with successfully written reports. Inspect `batch-manifest.json` before
+using those partial results. Infrastructure write failures remove only the newly created batch
+files; original inputs are never changed. Run a fresh live scan whenever endpoint or OAuth
+freshness matters.
+
 ## GitHub Action
 
 The composite Action exposes the same offline boundary:
