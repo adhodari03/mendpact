@@ -11,6 +11,7 @@ from typing import Annotated
 import anyio
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from mendpact import __version__
 from mendpact.authorization import audit_oauth_metadata
@@ -19,6 +20,7 @@ from mendpact.baseline import (
     inspect_scan_baseline,
     promote_scan_baseline,
 )
+from mendpact.batch_recheck import recheck_scan_directory
 from mendpact.behavior import (
     evaluate_mcp_url,
     load_behavior_suite,
@@ -209,6 +211,85 @@ def recheck(
         "authorization evidence was preserved but not refreshed."
     )
     if report.status == ScanStatus.FAILED:
+        raise typer.Exit(code=1)
+
+
+@app.command("recheck-batch")
+def recheck_batch(
+    ctx: typer.Context,
+    source_directory: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            file_okay=False,
+            readable=True,
+            help="Directory whose direct JSON children are original scan reports",
+        ),
+    ],
+    output_directory: Annotated[
+        Path,
+        typer.Option(
+            "--output-dir",
+            help="New private directory for numbered reports and batch-manifest.json",
+        ),
+    ],
+    fail_on: Annotated[
+        Severity,
+        typer.Option(
+            "--fail-on",
+            case_sensitive=False,
+            help="Minimum current finding severity that fails each saved scan",
+        ),
+    ] = Severity.HIGH,
+    policy_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--policy",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Current versioned TOML policy used for every offline recheck",
+        ),
+    ] = None,
+) -> None:
+    """Reapply current deterministic rules to a bounded directory of saved scans."""
+
+    try:
+        applied_policy = load_policy(policy_file) if policy_file is not None else None
+        if applied_policy is not None:
+            _reject_policy_overrides(ctx, ("fail_on",))
+        manifest = recheck_scan_directory(
+            source_directory,
+            output_directory,
+            failure_threshold=fail_on,
+            policy=applied_policy,
+        )
+    except ValueError as exc:
+        console.print(f"[red]Could not recheck batch:[/] {exc}")
+        raise typer.Exit(code=2) from exc
+
+    console.print(f"MendPact batch recheck: [bold]{manifest.status.value.upper()}[/]")
+    console.print(
+        f"Inputs: {manifest.source_count} | Passed: {manifest.passed_count} | "
+        f"Failed: {manifest.failed_count} | Errors: {manifest.error_count}"
+    )
+    table = Table("Input", "Status", "Findings", "Output")
+    for item in manifest.items:
+        table.add_row(
+            f"{item.input_index:03}",
+            item.status.value.upper(),
+            str(item.finding_count) if item.finding_count is not None else "—",
+            item.output_file or "—",
+        )
+    console.print(table)
+    console.print(f"Batch outputs: {output_directory}")
+    console.print(
+        "Offline boundary: inputs were ordered by filename, but filenames and targets are not "
+        "stored in the manifest. Authorization evidence was preserved, not refreshed."
+    )
+    if manifest.status == ScanStatus.ERROR:
+        raise typer.Exit(code=2)
+    if manifest.status == ScanStatus.FAILED:
         raise typer.Exit(code=1)
 
 
