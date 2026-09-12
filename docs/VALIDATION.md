@@ -569,3 +569,29 @@ remote publisher was used. Test acknowledgements are synthetic fixtures, not use
 publication manifest and receipt remain unsigned: they do not prove reviewer identity, source
 freshness, live execution, or safety. Approval expiry does not delete an already published page;
 hosted deletion and revocation remain future work.
+
+## Bounded batch recheck validation
+
+Date: September 11, 2026
+
+The batch-recheck slice was implemented on `feat/batch-offline-recheck`. The complete local suite
+passed 456 tests with warnings treated as errors and reported 89% statement coverage. Ruff and
+strict MyPy passed across all 42 source files. Both Action scripts passed Bash syntax checks; the
+CI, Pages, example, and Action YAML files parsed successfully; JavaScript syntax and the five-file
+project website validator passed; and Git diff whitespace validation passed.
+
+Fourteen new tests cover deterministic direct-child discovery, mixed passing and failing scans,
+network-denied execution, shared policy identity, invalid-input continuation, the 100-file limit,
+empty sources, symlink rejection, existing-output protection, partial-output cleanup after a write
+failure, internally inconsistent manifest rejection, conservative CLI exit codes, policy override
+rejection, and filename omission from command output and the manifest.
+
+A local CLI smoke applied `examples/policies/local-reliability.toml` once across the two committed
+original contract fixtures. Both rechecks passed and the generated
+`mendpact.batch-recheck.v1` manifest recorded two inputs, two passes, no failures, and no errors.
+The temporary outputs were inspected and removed.
+
+No MCP endpoint, model provider, API key, bearer token, paid service, GitHub write operation, or
+MCP tool was used. Batch mode evaluates historical saved graphs and does not refresh deployment or
+authorization evidence. The operational manifest omits input filenames and targets, but it is not
+a privacy-minimized public evidence export; use the explicit evidence workflow before sharing.
