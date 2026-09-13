@@ -75,6 +75,7 @@ Completed implementation is not equivalent to deployment or validation on custom
 - [x] bounded directory rechecks with one policy load and a versioned batch manifest
 - [x] review-gated static evidence-site preparation and pre-publish verification
 - [x] guarded real-world validation sessions with offline preflight and a two-scan ceiling
+- [x] integrity-checked privacy-minimized summaries for completed validation sessions
 - [ ] authenticated publisher with hosted deletion, expiry, and revocation controls
 - [ ] projects, authentication, and encrypted bring-your-own-key storage
 - [ ] scheduled scans and GitHub checks

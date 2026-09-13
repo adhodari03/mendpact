@@ -195,9 +195,10 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `batch_recheck.py` discovers a bounded directory of original scans, reuses one loaded policy,
   and writes neutral per-input outputs plus a versioned operational manifest.
 - `publication.py` prepares and verifies review-gated static evidence files without uploading.
-- `validation_session.py` enforces local authorization and runs bounded sequential metadata
-  captures for real-world interoperability review.
-- `validation_cli.py` exposes offline validation preflight and explicitly acknowledged capture.
+- `validation_session.py` enforces local authorization, runs bounded sequential metadata captures,
+  verifies completed evidence, and projects allowlisted repeat-capture summaries.
+- `validation_cli.py` exposes offline validation preflight and summary plus explicitly acknowledged
+  capture.
 - `behavior.py` orchestrates replayable task-to-tool evaluations.
 - `drivers/` converts provider decisions into normalized traces.
 - `argument_matching.py` applies scenario-approved string normalization to copied arguments.

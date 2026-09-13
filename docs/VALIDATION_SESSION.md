@@ -103,7 +103,32 @@ Exit codes are conservative: `0` means all planned scans passed policy, `1` mean
 completed but at least one scan failed policy, and `2` means an operational error or invalid
 preflight. None of these outcomes certifies security.
 
-## 5. Analyze and close out
+## 5. Verify and summarize offline
+
+After the network command finishes, verify the exact session inputs and write an allowlisted local
+summary:
+
+```bash
+mendpact validation summarize "$validation_dir"
+```
+
+This command makes no network request. It revalidates the private authorization, retention window,
+strict policy, workspace provenance, session manifest, every scan schema, recorded status, report
+hash, target match, policy snapshot, and aggregate counts. It refuses changed, missing, additional,
+linked, oversized, or overly permissive files and never overwrites `validation-summary.json`.
+
+The `mendpact.validation-summary.v1` output contains recorded outcomes, capability/finding counts,
+source hashes, and an aggregate two-capture contract result. It omits the target URL and alias,
+reviewer, permission note, scan IDs, capability names/descriptions, raw findings, and raw errors.
+SHA-256 values can still be linkable and do not authenticate the evidence. `stable` means the two
+complete capability graphs had no contract changes; `changed` means at least one change was counted;
+`unavailable` means two complete graphs were not recorded. None of these labels proves service
+safety, uptime, or that a live request occurred.
+
+Summary creation exits `0` when the source evidence is valid even if its recorded status is
+`failed` or `error`. Use the recorded status—not summary export success—as the reliability outcome.
+
+## 6. Analyze and close out
 
 If two complete reports exist, continue with offline diff, evidence export, history, and finding
 triage from the [real-world validation playbook](REAL_WORLD_VALIDATION.md). Record actual exit codes
