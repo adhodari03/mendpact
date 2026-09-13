@@ -74,6 +74,7 @@ Completed implementation is not equivalent to deployment or validation on custom
 - [x] deterministic rule-impact deltas for introduced, resolved, and reclassified findings
 - [x] bounded directory rechecks with one policy load and a versioned batch manifest
 - [x] review-gated static evidence-site preparation and pre-publish verification
+- [x] guarded real-world validation sessions with offline preflight and a two-scan ceiling
 - [ ] authenticated publisher with hosted deletion, expiry, and revocation controls
 - [ ] projects, authentication, and encrypted bring-your-own-key storage
 - [ ] scheduled scans and GitHub checks
@@ -86,6 +87,8 @@ Completed implementation is not equivalent to deployment or validation on custom
 1. Run the [real-world validation playbook](REAL_WORLD_VALIDATION.md) on explicitly authorized,
    independently developed targets. The offline setup and first local third-party runs are done;
    hosted/external validation remains pending explicit owner permission.
+   The guarded session runner is ready to enforce a local approval record, clean revision, strict
+   policy, retention window, and two-scan ceiling before the next live capture.
    Collect feedback on locally exported summaries using fixture or explicitly approved evidence.
    The [first validation set](REAL_WORLD_RESULTS.md) covers two local third-party implementations;
    broader target and authenticated-deployment coverage remains pending.

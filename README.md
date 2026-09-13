@@ -78,6 +78,20 @@ For authorized tests against independently developed servers, follow the
 setup script, strict policy selection, reproducibility notes, and a finding-review template.
 Preparing a workspace does not run a scan or call a model provider.
 
+After recording actual owner permission in the ignored local `authorization.json`, verify the
+workspace without network access and deliberately start its bounded capture:
+
+```bash
+mendpact validation preflight reports/validation/2026-09-13-server-a
+mendpact validation run reports/validation/2026-09-13-server-a \
+  --acknowledge-authorized
+```
+
+The runner performs at most two sequential metadata scans, never retries or overwrites, stops on
+an operational error, and records exact report digests in a local session manifest. It does not
+load credentials, execute MCP tools, call a model provider, publish, or upload. Read the
+[guarded validation-session guide](docs/VALIDATION_SESSION.md) before using the network command.
+
 ## Initialize a repository
 
 Create a production-safe policy and GitHub scan workflow in an application repository:

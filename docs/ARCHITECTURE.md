@@ -118,6 +118,25 @@ The publication manifest binds the static HTML and JSON to the reviewed package 
 window. It is not signed and cannot establish reviewer identity. The CLI prepares and re-verifies
 local files but deliberately does not invoke Git or a hosting provider.
 
+Real-world metadata capture has a separate local authorization boundary:
+
+```text
+prepared private workspace --> approved local authorization --> offline preflight
+                                                                   |
+                                                        explicit acknowledgement
+                                                                   |
+                                                                   v
+                                             1-2 sequential MCP discovery scans
+                                                                   |
+                                                                   v
+                                            exact report digests + session manifest
+```
+
+Preflight binds the approval window, strict policy bytes, clean Git revision, private file modes,
+retention, target profile, and unused outputs before network access. The runner reads the target
+from ignored local evidence, performs no retries, and stops a repeat capture after an operational
+error. It does not support credentials, tool execution, provider calls, or publishing.
+
 The contract baseline lifecycle separates machine capture from human trust. Inspection validates
 the scan schema and graph structure and exposes a canonical digest. Promotion requires the exact
 scan ID and optionally the exact deployment target, then atomically writes canonical JSON. Failed
@@ -176,6 +195,9 @@ than a Python dependency so its version and supply-chain boundary stay explicit.
 - `batch_recheck.py` discovers a bounded directory of original scans, reuses one loaded policy,
   and writes neutral per-input outputs plus a versioned operational manifest.
 - `publication.py` prepares and verifies review-gated static evidence files without uploading.
+- `validation_session.py` enforces local authorization and runs bounded sequential metadata
+  captures for real-world interoperability review.
+- `validation_cli.py` exposes offline validation preflight and explicitly acknowledged capture.
 - `behavior.py` orchestrates replayable task-to-tool evaluations.
 - `drivers/` converts provider decisions into normalized traces.
 - `argument_matching.py` applies scenario-approved string normalization to copied arguments.

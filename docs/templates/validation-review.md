@@ -7,13 +7,13 @@ Do not paste tokens, headers, customer data, or private server descriptions into
 
 - Reviewer / UTC date:
 - Target alias (use a non-sensitive label):
-- Exact target URL (local copy only; no URL credentials/query secrets):
-- Owner permission or documented testing permission / approved scope:
+- Exact target URL (must match local `authorization.json`; no URL credentials/query secrets):
+- Owner permission or documented testing permission / approved scope and local reference:
 - Upstream repository, exact commit or image digest, license, transport:
 - Launch instructions and configuration (secret names only, never values):
 - Environment manifest reviewed; source working tree clean or changes explained:
 - Policy selected, SHA-256, and reason (production HTTPS or isolated loopback):
-- Discovery request budget / stop conditions agreed:
+- Discovery request budget / stop conditions agreed (maximum two scans in guarded runner):
 - Auth required? Credential-free preflight outcome; no credentials provisioned by default:
 
 ## Results — leave blank until executed
