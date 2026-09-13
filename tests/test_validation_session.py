@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import socket
+import stat
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
@@ -24,11 +25,15 @@ from mendpact.domain import (
 )
 from mendpact.validation_session import (
     SESSION_MANIFEST_NAME,
+    SESSION_SUMMARY_NAME,
     ValidationSessionError,
     ValidationSessionManifest,
     ValidationSessionScan,
+    ValidationSessionSummary,
+    inspect_completed_validation_session,
     inspect_validation_session,
     run_validation_session,
+    summarize_validation_session,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -107,6 +112,7 @@ def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "_git",
         lambda _root, *arguments: "a" * 40 if arguments[0] == "rev-parse" else "",
     )
+    monkeypatch.setattr(validation_session, "_now", lambda: NOW)
     return directory
 
 
@@ -396,3 +402,153 @@ def test_cli_run_uses_approved_file_and_conservative_exit(
     assert "Validation session: FAILED | Completed scans: 2/2" in result.stdout
     assert "No automatic retry" in result.stdout
     assert (workspace / SESSION_MANIFEST_NAME).exists()
+
+
+@pytest.mark.anyio
+async def test_completed_session_summary_verifies_sources_and_omits_private_values(
+    workspace: Path,
+) -> None:
+    calls = 0
+
+    async def scanner(_target: str, **kwargs: object) -> ScanReport:
+        nonlocal calls
+        calls += 1
+        report = _report(calls, ScanStatus.PASSED if calls == 1 else ScanStatus.FAILED)
+        report.policy = kwargs["applied_policy"]  # type: ignore[assignment]
+        return report
+
+    await run_validation_session(workspace, scanner=scanner, started_at=NOW)
+
+    completed = inspect_completed_validation_session(
+        workspace,
+        inspected_at=NOW + timedelta(days=2),
+    )
+    summary = summarize_validation_session(
+        workspace,
+        summarized_at=NOW + timedelta(days=2),
+    )
+
+    assert len(completed.reports) == 2
+    assert summary.recorded_status == ScanStatus.FAILED
+    assert summary.completed_scan_count == 2
+    assert summary.comparison.result == "stable"
+    assert summary.comparison.change_count == 0
+    assert summary.scans[1].finding_count == 1
+    assert summary.scans[1].findings_by_severity["high"] == 1
+    serialized = summary.model_dump_json()
+    assert TARGET not in serialized
+    assert "server-a" not in serialized
+    assert "owner@example.test" not in serialized
+    assert "Local owner approval" not in serialized
+    assert "scan-1" not in serialized
+
+
+@pytest.mark.anyio
+async def test_summary_detects_contract_changes_between_complete_scans(
+    workspace: Path,
+) -> None:
+    calls = 0
+
+    async def scanner(_target: str, **kwargs: object) -> ScanReport:
+        nonlocal calls
+        calls += 1
+        report = _report(calls, ScanStatus.PASSED)
+        report.policy = kwargs["applied_policy"]  # type: ignore[assignment]
+        if calls == 2 and report.graph is not None:
+            report.graph.nodes.append(
+                CapabilityNode(id="tool:weather", kind=NodeKind.TOOL, name="weather")
+            )
+            report.summary = summarize(report.graph, report.findings)
+        return report
+
+    await run_validation_session(workspace, scanner=scanner, started_at=NOW)
+    summary = summarize_validation_session(
+        workspace,
+        summarized_at=NOW + timedelta(minutes=1),
+    )
+
+    assert summary.comparison.result == "changed"
+    assert summary.comparison.change_count == 1
+    assert summary.comparison.changes_by_impact["risky"] == 1
+    assert summary.scans[1].tool_count == 1
+
+
+@pytest.mark.anyio
+async def test_completed_session_rejects_changed_report_bytes(workspace: Path) -> None:
+    calls = 0
+
+    async def scanner(_target: str, **kwargs: object) -> ScanReport:
+        nonlocal calls
+        calls += 1
+        report = _report(calls, ScanStatus.PASSED)
+        report.policy = kwargs["applied_policy"]  # type: ignore[assignment]
+        return report
+
+    await run_validation_session(workspace, scanner=scanner, started_at=NOW)
+    with (workspace / "scan-01.json").open("a", encoding="utf-8") as stream:
+        stream.write("\n")
+
+    with pytest.raises(ValidationSessionError, match="does not match the session manifest"):
+        inspect_completed_validation_session(
+            workspace,
+            inspected_at=NOW + timedelta(minutes=1),
+        )
+
+
+def test_cli_summarize_is_offline_private_and_does_not_overwrite(
+    workspace: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+
+    async def scanner(_target: str, **kwargs: object) -> ScanReport:
+        nonlocal calls
+        calls += 1
+        report = _report(calls, ScanStatus.PASSED)
+        report.policy = kwargs["applied_policy"]  # type: ignore[assignment]
+        return report
+
+    monkeypatch.setattr(validation_session, "scan_mcp_url", scanner)
+    run_result = runner.invoke(
+        app,
+        ["validation", "run", str(workspace), "--acknowledge-authorized"],
+    )
+    assert run_result.exit_code == 0
+    monkeypatch.setattr(socket, "socket", Mock(side_effect=AssertionError("network forbidden")))
+
+    result = runner.invoke(app, ["validation", "summarize", str(workspace)])
+
+    assert result.exit_code == 0
+    assert "validation summary: EXPORTED" in result.stdout
+    assert "Repeat-capture contract: STABLE" in result.stdout
+    assert "Export success does not mean" in result.stdout
+    assert TARGET not in result.stdout
+    output = workspace / SESSION_SUMMARY_NAME
+    assert stat.S_IMODE(output.stat().st_mode) == 0o600
+    saved = ValidationSessionSummary.model_validate_json(output.read_text(encoding="utf-8"))
+    assert saved.comparison.result == "stable"
+
+    repeated = runner.invoke(app, ["validation", "summarize", str(workspace)])
+    assert repeated.exit_code == 2
+    assert "Cannot write export" in repeated.stdout
+
+
+@pytest.mark.anyio
+async def test_summary_marks_repeat_comparison_unavailable_after_operational_error(
+    workspace: Path,
+) -> None:
+    async def scanner(_target: str, **kwargs: object) -> ScanReport:
+        report = _report(1, ScanStatus.ERROR)
+        report.policy = kwargs["applied_policy"]  # type: ignore[assignment]
+        return report
+
+    await run_validation_session(workspace, scanner=scanner, started_at=NOW)
+    summary = summarize_validation_session(
+        workspace,
+        summarized_at=NOW + timedelta(minutes=1),
+    )
+
+    assert summary.recorded_status == ScanStatus.ERROR
+    assert summary.stopped_early is True
+    assert summary.comparison.result == "unavailable"
+    assert summary.scans[0].recorded_error_count == 1

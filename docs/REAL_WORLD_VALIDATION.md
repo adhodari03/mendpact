@@ -99,7 +99,23 @@ authorization schema and exact boundaries.
 
 ## 5. Analyze offline
 
-For two complete captures, compare their catalogs without promoting either as a trusted baseline:
+First verify the completed session and create its privacy-minimized aggregate summary:
+
+```bash
+mendpact validation summarize "$validation_dir"
+```
+
+This rereads the private authorization, workspace manifest, strict policy, session manifest, and
+every recorded scan. It checks exact hashes, identities, timestamps, outcomes, target consistency,
+private file modes, and retention without contacting the target. The new
+`validation-summary.json` omits the target URL, alias, reviewer, permission note, scan IDs,
+descriptions, finding details, and errors. It retains source hashes and aggregate counts, so hashes
+remain linkable fingerprints rather than anonymization or signatures. A successful export means
+the evidence was structurally verified; it does not change or replace a failed/error scan status.
+
+For two complete captures, the summary also classifies their capability contracts as `stable` or
+`changed`. An early operational error produces `unavailable`, not a false stability claim. Continue
+with the detailed private analysis without promoting either capture as a trusted baseline:
 
 ```bash
 mendpact diff "$validation_dir/scan-01.json" "$validation_dir/scan-02.json" \

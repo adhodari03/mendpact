@@ -625,3 +625,30 @@ write operation, or publisher was used. The implemented network runner remains u
 a live target in this slice; its scanner dependency is controlled by offline tests. Live metadata
 capture requires a fresh clean workspace, a real local permission record, successful preflight,
 and a separate `--acknowledge-authorized` action.
+
+## Completed validation-session summary validation
+
+Date: September 13, 2026
+
+The offline summary slice was implemented on `feat/validation-session-summary`. The complete local
+suite passed 481 tests with warnings treated as errors and reported 88% statement coverage. Ruff
+passed for the repository, and strict MyPy passed across all 44 source files. The Action shell
+scripts passed Bash syntax checks; all four workflow/Action YAML files parsed successfully;
+JavaScript syntax, the five-file website validator, and Git diff whitespace checks passed.
+
+Five new tests cover exact completed-session verification, privacy-field omission, stable and
+changed repeat-capture contracts, changed-report-byte rejection, mode-600 output, no-overwrite
+behavior, offline CLI execution, and an explicitly unavailable comparison after an operational
+error. The existing validation fixture now freezes its test clock, preventing its intentionally
+fixed authorization window from expiring as the real calendar advances.
+
+The summary implementation rereads the private authorization, preparation manifest, strict policy,
+session manifest, and recorded scans. It validates bounded regular files, hashes, schemas,
+timestamps, target and policy consistency, aggregate counts, and retention before producing only
+allowlisted metrics. The output omits target URLs and aliases, reviewers, permission notes, scan
+IDs, capability names and descriptions, raw findings, and raw errors. Retained hashes are linkable
+fingerprints, not anonymization or signatures.
+
+No DNS lookup, MCP endpoint, credential, model provider, paid service, MCP tool, GitHub write
+operation, publisher, or upload was used. Controlled in-memory reports exercised the completed
+session path. A real approved target has not been scanned by this feature branch.
