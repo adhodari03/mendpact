@@ -43,6 +43,11 @@ def test_offline_private_workspace_preserves_strict_policies(
     destination = setup.prepare_workspace(checkout, "server-a")
     manifest = json.loads((destination / "manifest.json").read_text())
     assert manifest["status"] == "not-run"
+    authorization = json.loads((destination / "authorization.json").read_text())
+    assert authorization["status"] == "draft"
+    assert authorization["allow_authenticated"] is False
+    assert authorization["allow_tool_execution"] is False
+    assert authorization["allow_provider_calls"] is False
     assert datetime.fromisoformat(manifest["review_or_delete_by"]) - datetime.fromisoformat(
         manifest["created_at"]
     ) == timedelta(days=14)

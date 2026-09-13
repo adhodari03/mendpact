@@ -34,7 +34,8 @@ python scripts/prepare_validation.py 2026-09-07-server-a
 ```
 
 The script works offline and creates `reports/validation/2026-09-07-server-a/` with a private
-directory, strict production and local policies, a review template, and a versioned manifest.
+directory, strict production and local policies, a review template, a draft machine-readable
+authorization record, and a versioned manifest.
 It records the Git revision, dirty-state flag, Python and selected package versions, template
 hashes, and a 14-day manual cleanup reminder. It does not read environment-variable values,
 contact servers, or assert that tests ran. Existing run directories are never reused. A partial
@@ -46,27 +47,40 @@ editable project and use a fresh label.
 
 The manifest is preparation provenance, not a signed attestation or dependency lockfile.
 Prepare again after committing/pulling if you need provenance for that exact clean revision.
-Complete the authorization section of `review.md` before running any network command.
+Complete `authorization.json` and the authorization section of `review.md` before running any
+network command. The JSON record is the enforced gate; the Markdown file holds the fuller human
+review. See the [guarded validation-session guide](VALIDATION_SESSION.md).
 
-## 3. Capture discovery with strict gates
+## 3. Preflight authorization offline
 
-Example for an authorized HTTPS target; replace the placeholder before running:
+The guarded runner reads the target from ignored local evidence instead of a shell argument.
+After recording real permission, a current approval window, the target profile, a maximum of two
+scans, and the stop-condition acknowledgement in `authorization.json`, run:
 
 ```bash
-umask 077
 validation_dir=reports/validation/2026-09-07-server-a
-validation_target=https://your-authorized-server.example/mcp
-test ! -e "$validation_dir/scan-01.json" && \
-  mendpact scan "$validation_target" --policy "$validation_dir/production.toml" \
-  --output "$validation_dir/scan-01.json"
-validation_exit=$?
-printf 'Scan exit code: %s\n' "$validation_exit"
+mendpact validation preflight "$validation_dir"
 ```
 
-Run commands interactively without shell `errexit`; record the exit code immediately. If the
-file-existence check fails, the scan did not run: choose a fresh output rather than recording
-that check as a scan failure. MendPact's existing scan writer can overwrite paths; the check is
-an operator guard, not a concurrent-write guarantee.
+Preflight verifies private files, approval lifetime, safe target syntax, the strict policy bytes,
+the exact clean Git revision, retention, and unused output names. It performs no DNS lookup,
+network request, credential lookup, tool call, or provider call. A draft or stale workspace is not
+ready.
+
+## 4. Capture discovery with strict gates
+
+Only after successful preflight and a final human review, start the approved network operation:
+
+```bash
+mendpact validation run "$validation_dir" --acknowledge-authorized
+validation_exit=$?
+printf 'Validation exit code: %s\n' "$validation_exit"
+```
+
+Run commands interactively without shell `errexit` and record the exit immediately. The runner
+performs the approved one or two scans sequentially, never overwrites outputs, uses no retries,
+and records exact report digests in `session.json`. It stops after an operational error. The target
+URL, reviewer, and permission note are not copied into the session manifest.
 
 For a deliberately isolated loopback HTTP server, use `local-strict.toml` instead. That policy
 allows private addresses and HTTP but still fails on high scan findings and risky contract
@@ -79,10 +93,11 @@ Inspect the full report locally. If authorization remains uncertain, stop and co
 [authentication guide](AUTHENTICATION.md); a credential-free `auth-check` is an additional
 network operation, not part of the default two-scan budget. Credential use needs separate review.
 
-Only if the first scan completes and the agreed budget permits, repeat against the unchanged
-server into `scan-02.json`, with the same no-overwrite check and exit-code recording.
+The guarded runner does not support credentials, tool execution, conformance, or provider calls.
+Those require separately reviewed scope. See [the session guide](VALIDATION_SESSION.md) for the
+authorization schema and exact boundaries.
 
-## 4. Analyze offline
+## 5. Analyze offline
 
 For two complete captures, compare their catalogs without promoting either as a trusted baseline:
 
@@ -107,7 +122,7 @@ positives and unknowns separately. Read the generated review template for the ev
 Do not invent replay decisions as proof of actual model behavior; behavioral evaluation is a
 separate phase with reviewed scenarios and an explicitly approved provider budget if needed.
 
-## 5. Close out and report honestly
+## 6. Close out and report honestly
 
 Deliver a reviewed target matrix, reproducible defects, synthetic regression fixtures, and a
 sanitized summary of what did/did not work. Mark blocked targets and unsupported features

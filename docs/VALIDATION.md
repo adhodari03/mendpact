@@ -595,3 +595,33 @@ No MCP endpoint, model provider, API key, bearer token, paid service, GitHub wri
 MCP tool was used. Batch mode evaluates historical saved graphs and does not refresh deployment or
 authorization evidence. The operational manifest omits input filenames and targets, but it is not
 a privacy-minimized public evidence export; use the explicit evidence workflow before sharing.
+
+## Guarded real-world validation-session validation
+
+Date: September 12, 2026
+
+The guarded session slice was implemented on `feat/guarded-validation-session`. The complete local
+suite passed 476 tests with warnings treated as errors and reported 88% statement coverage. Ruff
+and strict MyPy passed across all 44 source files. Both Action scripts passed Bash syntax checks;
+the CI, Pages, example, and Action YAML files parsed successfully; JavaScript syntax and the
+five-file project website validator passed; and Git diff whitespace validation passed.
+
+Twenty new tests cover network-denied preflight, draft authorization, HTTPS and loopback target
+profiles, URL credentials and query rejection, current approval and 14-day ceilings, explicit stop
+conditions, strict policy selection, stale Git revision and modified-policy detection, private
+file modes, existing-output protection, sequential two-scan capture, early stop after an
+operational error, report-byte digests, session-manifest invariants, target/reviewer omission,
+fresh CLI acknowledgement, and conservative exit codes. Existing workspace setup tests now verify
+that every new workspace starts with credentials, tool execution, and provider calls disabled.
+
+An offline integration smoke prepared a new private workspace and confirmed its
+`mendpact.validation-workspace.v1` manifest, draft authorization state, and two-scan ceiling. The
+offline preflight correctly returned exit `2` and blocked the draft before target validation. The
+temporary workspace was inspected and removed. A real approved target was deliberately not
+invented for this check.
+
+No DNS lookup, MCP endpoint, model provider, API key, bearer token, paid service, MCP tool, GitHub
+write operation, or publisher was used. The implemented network runner remains unexecuted against
+a live target in this slice; its scanner dependency is controlled by offline tests. Live metadata
+capture requires a fresh clean workspace, a real local permission record, successful preflight,
+and a separate `--acknowledge-authorized` action.
