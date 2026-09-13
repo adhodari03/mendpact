@@ -14,9 +14,11 @@ from mendpact.domain import ScanStatus
 from mendpact.reporting import render_report
 from mendpact.validation_session import (
     SESSION_MANIFEST_NAME,
+    SESSION_SUMMARY_NAME,
     ValidationSessionError,
     inspect_validation_session,
     run_validation_session,
+    write_validation_session_summary,
 )
 
 app = typer.Typer(
@@ -111,3 +113,43 @@ def run(
         raise typer.Exit(code=2)
     if manifest.status == ScanStatus.FAILED:
         raise typer.Exit(code=1)
+
+
+@app.command("summarize")
+def summarize(
+    workspace: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            file_okay=False,
+            readable=True,
+            help="Completed private reports/validation workspace",
+        ),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help=f"New summary file (default: workspace/{SESSION_SUMMARY_NAME})",
+        ),
+    ] = None,
+) -> None:
+    """Verify completed evidence and write an offline privacy-minimized summary."""
+
+    try:
+        summary, destination = write_validation_session_summary(workspace, output)
+    except ValueError as exc:
+        _error(exc)
+        return
+    console.print("MendPact validation summary: [bold green]EXPORTED[/]")
+    console.print(f"Recorded session status: {summary.recorded_status.value.upper()}")
+    console.print(
+        f"Verified scans: {summary.completed_scan_count}/{summary.planned_scan_count} | "
+        f"Repeat-capture contract: {summary.comparison.result.upper()}"
+    )
+    console.print(f"Summary: {destination}")
+    console.print(
+        "No network request, credential lookup, MCP tool, provider call, or upload was made."
+    )
+    console.print("Export success does not mean the recorded session passed policy.")
