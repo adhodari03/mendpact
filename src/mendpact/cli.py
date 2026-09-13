@@ -104,6 +104,7 @@ from mendpact.security.auth import (
 )
 from mendpact.security.targets import TargetPolicy
 from mendpact.sharing_cli import app as sharing_app
+from mendpact.validation_cli import app as validation_app
 
 app = typer.Typer(
     name="mendpact",
@@ -118,6 +119,7 @@ baseline_app = typer.Typer(
 app.add_typer(baseline_app, name="baseline")
 app.add_typer(history_app, name="history")
 app.add_typer(sharing_app, name="share")
+app.add_typer(validation_app, name="validation")
 
 
 class BehaviorDriver(StrEnum):

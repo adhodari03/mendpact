@@ -20,6 +20,7 @@ PACKAGES = ("mcp", "httpx2", "pydantic", "typer", "rich")
 TEMPLATES = {
     "production.toml": "examples/policies/production.toml",
     "local-strict.toml": "examples/policies/local-strict.toml",
+    "authorization.json": "docs/templates/validation-authorization.json",
     "review.md": "docs/templates/validation-review.md",
 }
 
@@ -131,7 +132,10 @@ def main() -> int:
             "`python -m pip install -e '.[dev]'`, then check the label, paths, and Git checkout. "
             "Existing files were not replaced; inspect any partial new directory.\n",
         )
-    print(f"Prepared {destination}\nNo validation has run. Follow docs/REAL_WORLD_VALIDATION.md.")
+    print(
+        f"Prepared {destination}\nNo validation has run. Complete authorization.json, then "
+        "follow docs/REAL_WORLD_VALIDATION.md."
+    )
     return 0
 
 
