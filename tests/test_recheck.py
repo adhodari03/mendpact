@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from mendpact import __version__
 from mendpact.domain import (
     CapabilityGraph,
     CapabilityNode,
@@ -102,7 +103,7 @@ def test_rechecks_current_rules_with_exact_source_provenance(
     assert result.recheck == ScanRecheckEvidence(
         source_sha256=sha256(raw).hexdigest(),
         rechecked_at=NOW,
-        mendpact_version="0.2.0",
+        mendpact_version=__version__,
         source_status=ScanStatus.PASSED,
         preserved_authorization_finding_count=1,
         rule_delta=ScanRuleDelta(
