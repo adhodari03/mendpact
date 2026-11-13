@@ -1,14 +1,20 @@
 # MendPact
 
+[![CI](https://github.com/adhodari03/mendpact/actions/workflows/ci.yml/badge.svg)](https://github.com/adhodari03/mendpact/actions/workflows/ci.yml)
+[![Project website](https://github.com/adhodari03/mendpact/actions/workflows/pages.yml/badge.svg)](https://adhodari03.github.io/mendpact/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
+
 MendPact is a protocol-native reliability scanner for AI agents. The first release connects to
 a remote Model Context Protocol (MCP) endpoint, inventories its capabilities, builds a graph of
 the exposed surface, runs deterministic safety checks, and emits a CI-friendly report.
 
-> **Status:** early development. MendPact reports observable risks and compatibility signals;
-> it does not certify that an agent is safe.
+> **Status:** open-source alpha. The CLI and GitHub Action are usable for reviewed MCP endpoints.
+> MendPact reports observable risks and compatibility signals; it does not certify safety.
 
 The static project website is maintained in `site/`. See the
-[website guide](docs/WEBSITE.md) for local preview and GitHub Pages deployment.
+[website guide](docs/WEBSITE.md) for local preview and GitHub Pages deployment. Release changes
+are summarized in the [changelog](CHANGELOG.md).
 
 ## Why start here?
 
@@ -21,11 +27,19 @@ baseline before probabilistic, model-driven evaluations are added.
 MendPact requires Python 3.12 or newer.
 
 ```bash
+git clone https://github.com/adhodari03/mendpact.git
+cd mendpact
+
 python3.13 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]'
-mendpact scan https://example.com/mcp --output report.json
+python -m pip install -e .
+mendpact --version
+mendpact --help
 ```
+
+Install `.[dev]` instead when contributing. Before scanning a remote endpoint, confirm that you own
+it or have permission to test it. For a self-contained demonstration, start the included fixture
+in one terminal and run the loopback example below in another.
 
 ### Discover an MCP server first
 
@@ -492,7 +506,7 @@ provider tool-selection checks and never executes the selected MCP tool.
 
 ```yaml
 - id: mendpact
-  uses: adhodari03/mendpact@v0.2.0
+  uses: adhodari03/mendpact@v0.3.0
   with:
     mode: guard
     target: https://your-server.example/mcp
@@ -502,7 +516,7 @@ provider tool-selection checks and never executes the selected MCP tool.
     output: mendpact-guard-report.json
 ```
 
-The `v0.2.0` Action writes a Markdown job summary and bounded workflow annotations while keeping
+The `v0.3.0` Action writes a Markdown job summary and bounded workflow annotations while keeping
 the JSON report as its complete machine-readable output. It also exposes the report and
 candidate-scan paths so the consuming workflow controls artifact upload and retention. Pin an
 exact full commit SHA when an immutable reference with stronger supply-chain guarantees is
