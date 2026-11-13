@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 
 import mendpact.validation_cli as validation_cli
 import mendpact.validation_setup as setup
+from mendpact import __version__
 from mendpact.cli import app
 from mendpact.policy import load_policy
 from mendpact.registry import RegistryRecord, validation_candidate_from_record
@@ -105,7 +106,11 @@ def test_environment_is_allowlisted(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         setup, "git_value", lambda _, *args: "fixture" if args[0] == "rev-parse" else ""
     )
-    monkeypatch.setattr(setup, "version", lambda name: "0.2.0" if name == "mendpact" else "fixture")
+    monkeypatch.setattr(
+        setup,
+        "version",
+        lambda name: __version__ if name == "mendpact" else "fixture",
+    )
     monkeypatch.setenv("MENDPACT_ACCESS_TOKEN", "SECRET-TOKEN")
     record = setup.environment_record(ROOT)
     assert set(record) == {"revision", "working_tree_dirty", "python", "packages"}

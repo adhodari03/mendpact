@@ -407,7 +407,7 @@ also recommends consuming an Action through an explicit repository revision.
 
 1. Merge the release change only after its local `uses: ./` CI smoke test passes.
 2. Create a GitHub release from the merged commit with a tag matching the package version, such
-   as `v0.2.0`, and title it `MendPact v0.2.0`.
+   as `v0.3.0`, and title it `MendPact v0.3.0`.
 3. Keep the release notes explicit that this is an alpha supporting Streamable HTTP MCP targets.
 4. If publishing to GitHub Marketplace, open the root `action.yml`, select the Marketplace
    release banner, accept the Marketplace Developer Agreement if prompted, and publish the same
